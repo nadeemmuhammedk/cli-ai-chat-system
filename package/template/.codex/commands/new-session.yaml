@@ -1,0 +1,141 @@
+description: Create a new AI chat session with organized folder structure
+
+prompt: |
+  Create a new session folder for organizing this AI chat conversation.
+
+  **Arguments:** $ARGS
+
+  ## Step 0: Validate Prerequisites
+
+  Run the following bash check:
+  ```bash
+  if ! command -v jq &> /dev/null; then
+    echo "ERROR: jq is not installed"
+    echo "Install with: choco install jq (Windows) or apt install jq (Linux)"
+    exit 1
+  fi
+  if [ ! -f "_templates/session/context-template.md" ] || \
+     [ ! -f "_templates/session/messages-template.md" ] || \
+     [ ! -f "_templates/session/decisions-template.md" ]; then
+    echo "ERROR: Template files missing in _templates/session/"
+    exit 1
+  fi
+  echo "Prerequisites OK"
+  ```
+  If validation fails, stop and display the error.
+
+  ## Step 1: Parse Arguments
+
+  Parse $ARGS:
+  - 2+ words: First word = project name, rest = session topic
+  - 1 word: Ask "Is this a project name or session topic?"
+  - 0 words: Ask for both project (optional) and topic
+
+  Validation — both names must be kebab-case: `^[a-z0-9]+(-[a-z0-9]+)*$`
+
+  If invalid, display:
+  ```
+  Error: Names must use kebab-case (lowercase, hyphens, numbers only).
+  Examples: seo-research, bug-fix-123, testing
+  ```
+
+  ## Step 2: Check Session Doesn't Already Exist
+
+  ```bash
+  SESSION_PATH="chats/projects/[project]/[YYYY-MM-DD]-[topic]"
+  [ -d "$SESSION_PATH" ] && echo "EXISTS" || echo "NOT_EXISTS"
+  ```
+
+  If EXISTS, tell user to choose a different topic or use /continue-session.
+
+  ## Step 3: Create Session Structure
+
+  Execute a single bash script with all values substituted:
+
+  ```bash
+  #!/bin/bash
+  PROJECT_NAME="[project-name]"
+  PROJECT_DISPLAY="[project-display]"
+  SESSION_TOPIC="[session-topic]"
+  CURRENT_DATE="[YYYY-MM-DD]"
+  CURRENT_DATETIME="[ISO-8601-timestamp]"
+
+  if [ -n "$PROJECT_NAME" ]; then
+    SESSION_PATH="chats/projects/$PROJECT_NAME/$CURRENT_DATE-$SESSION_TOPIC"
+  else
+    SESSION_PATH="chats/unnamed_projects/$CURRENT_DATE-$SESSION_TOPIC"
+  fi
+
+  TEMPLATE_DIR="_templates/session"
+  REGISTRY_FILE=".cli-ai-chat/sessions.json"
+  ACTIVE_FILE=".cli-ai-chat/active-session.txt"
+
+  # Create folder structure
+  mkdir -p "$SESSION_PATH"/{artifacts,core_files,core_instructions,uploaded_files,planning_mode/archive}
+
+  # Copy and fill templates
+  copy_and_replace() {
+    local src="$1"
+    local dest="$2"
+    cp "$src" "$dest"
+    sed -i "s/\[SESSION_TOPIC\]/$SESSION_TOPIC/g" "$dest"
+    sed -i "s/\[PROJECT_NAME\]/$PROJECT_DISPLAY/g" "$dest"
+    sed -i "s/\[CURRENT_DATETIME\]/$CURRENT_DATETIME/g" "$dest"
+    sed -i "s/\[DATETIME\]/$CURRENT_DATETIME/g" "$dest"
+  }
+  copy_and_replace "$TEMPLATE_DIR/context-template.md" "$SESSION_PATH/context.md"
+  copy_and_replace "$TEMPLATE_DIR/messages-template.md" "$SESSION_PATH/messages.md"
+  copy_and_replace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.md"
+
+  # Initialize registry if needed
+  mkdir -p .cli-ai-chat
+  [ ! -f "$REGISTRY_FILE" ] && echo '{"sessions": []}' > "$REGISTRY_FILE"
+
+  # Pause previous active session if exists
+  PREV_ACTIVE=""
+  [ -f "$ACTIVE_FILE" ] && PREV_ACTIVE=$(cat "$ACTIVE_FILE")
+  if [ -n "$PREV_ACTIVE" ]; then
+    jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" \
+      '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' \
+      "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+    echo "Previous session paused: $PREV_ACTIVE"
+  fi
+
+  # Add new session to registry
+  jq --arg path "$SESSION_PATH" \
+     --arg topic "$SESSION_TOPIC" \
+     --arg project "$PROJECT_DISPLAY" \
+     --arg created "$CURRENT_DATETIME" \
+     '.sessions += [{
+       "path": $path,
+       "topic": $topic,
+       "project": $project,
+       "status": "in-progress",
+       "platform": "codex",
+       "created": $created,
+       "lastActive": $created
+     }]' \
+     "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+
+  # Set active pointer
+  echo "$SESSION_PATH" > "$ACTIVE_FILE"
+
+  echo "✓ Session created: $SESSION_PATH"
+  echo "✓ Registry updated"
+  ```
+
+  ## Step 4: Confirm Success
+
+  Display:
+  ```
+  ✓ Session created successfully!
+
+  Location: [session-path]
+  Project: [project or "Unnamed"]
+  Status: Active
+
+  You can now:
+    - Use /checkpoint to save progress
+    - Use /start-plan for complex multi-phase work
+    - Use /end-session when complete
+  ```

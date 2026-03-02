@@ -1,0 +1,135 @@
+description: Save a checkpoint of the current session's progress
+
+prompt: |
+  Create a checkpoint for the active session.
+
+  ## Step 1: Read Active Session
+
+  Read `.cli-ai-chat/active-session.txt` to get the current session path.
+  If file doesn't exist, tell the user to run /new-session first.
+
+  ## Step 2: Check Planning Mode
+
+  Look in `[session-path]/planning_mode/` for plan/todo/done files.
+  If found, planning mode is active.
+
+  ## Step 3: Analyze and Generate Checkpoint Content
+
+  a. Review conversation history since last checkpoint:
+     - Identify key topics discussed
+     - Note work completed and artifacts created
+     - Detect decision points and choices made
+     - Observe context evolution (scope changes, new capabilities)
+
+  b. Generate draft content:
+     - Summary: concise description of work done
+     - Decisions: choices made with rationale
+     - Context changes: new capabilities or scope shifts
+
+  c. Present numbered selection to user:
+  ```
+  📋 Checkpoint Content
+
+  Select accurate items (comma-separated numbers or "all"):
+
+  [1] [Generated summary]
+  [2] [Generated decision: Context | Choice | Rationale]
+  [3] [Generated context change]
+  [4] Other (provide custom content)
+
+  Your selection:
+  ```
+
+  d. If "Other" or modification selected, prompt user for corrections.
+
+  ## Step 4: Planning Status Check (if planning mode active)
+
+  Read current plan.md, todo.md, done.md and compare with actual work.
+
+  Present:
+  ```
+  Select all that apply:
+
+  [1] Work deviated from plan
+  [2] Plan needs updating
+  [3] Everything on track
+
+  Your selection:
+  ```
+
+  Handle responses:
+  - Deviation selected: document in decisions.md
+  - Plan needs updating: update plan.md with new direction
+
+  ## Step 5: Update context.md (if context changed)
+
+  CRITICAL: Do this BEFORE the bash script.
+
+  Read current context.md, then use Edit tool to replace:
+  - "## Current Focus" section with new validated content
+  - "## Key Points" bullet list with updated points
+
+  Skip if no context changes (most checkpoints).
+
+  ## Step 6: Run Bash Script
+
+  ```bash
+  SESSION_PATH="[session-path]"
+  CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  CHECKPOINT_NUMBER="[count-from-messages.md]"
+  WORK_SUMMARY="[validated-summary]"
+  DECISIONS_TO_ADD="[validated-decisions]"
+
+  MESSAGES_FILE="$SESSION_PATH/messages.md"
+  DECISIONS_FILE="$SESSION_PATH/decisions.md"
+  CONTEXT_FILE="$SESSION_PATH/context.md"
+
+  # Append to messages.md
+  cat >> "$MESSAGES_FILE" <<MESSAGES_EOF
+
+  ### Exchange $CHECKPOINT_NUMBER
+  **User:** [User activities since last checkpoint]
+  **Assistant:** $WORK_SUMMARY
+  **Outcome:** [Outcome description]
+  MESSAGES_EOF
+
+  # Update messages.md timestamp
+  sed -i "s/\*Last Checkpoint:.*/\*Last Checkpoint: $CURRENT_DATETIME*/" "$MESSAGES_FILE"
+
+  # Append decisions (if any)
+  if [ -n "$DECISIONS_TO_ADD" ]; then
+    DECISION_COUNT=$(grep -oP 'Decision Count: \K\d+' "$DECISIONS_FILE" 2>/dev/null || echo 0)
+    cat >> "$DECISIONS_FILE" <<DECISIONS_EOF
+
+  $DECISIONS_TO_ADD
+  DECISIONS_EOF
+    NEW_COUNT=$((DECISION_COUNT + 1))
+    sed -i "s/Decision Count: [0-9]*/Decision Count: $NEW_COUNT/" "$DECISIONS_FILE"
+  fi
+
+  sed -i "s/\*Decision Count:.*/\*Decision Count: ${NEW_COUNT:-$DECISION_COUNT} | Last Updated: $CURRENT_DATETIME*/" "$DECISIONS_FILE"
+
+  # Update context.md timestamp only (content handled by Edit tool)
+  sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$CONTEXT_FILE"
+
+  # Update registry lastActive
+  REGISTRY_FILE=".cli-ai-chat/sessions.json"
+  jq --arg path "$SESSION_PATH" --arg time "$CURRENT_DATETIME" \
+    '.sessions |= map(if .path == $path then .lastActive = $time else . end)' \
+    "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+
+  echo "✓ Checkpoint saved"
+  echo "✓ Updated: context.md, messages.md, decisions.md"
+
+  # Planning mode status
+  PLANNING_DIR="$SESSION_PATH/planning_mode"
+  if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
+    TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)
+    DONE_FILE=$(ls "$PLANNING_DIR"/*-done.md 2>/dev/null | head -1)
+    PENDING=$(grep -c "^[0-9]*\. \[ \]" "$TODO_FILE" 2>/dev/null || echo 0)
+    DONE=$(grep -c "^[0-9]*\. \[x\]" "$DONE_FILE" 2>/dev/null || echo 0)
+    echo "Planning: Pending=$PENDING | Completed=$DONE"
+    sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$TODO_FILE" 2>/dev/null
+    sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$DONE_FILE" 2>/dev/null
+  fi
+  ```

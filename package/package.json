@@ -1,0 +1,38 @@
+{
+	"name": "cli-ai-chat-system",
+	"version": "1.0.0",
+	"description": "Unified AI chat session management system for Claude, Gemini, and Codex CLI tools",
+	"bin": {
+		"cli-ai-chat-system": "./bin/cli-ai-chat-system.js"
+	},
+	"files": [
+		"bin/",
+		"template/"
+	],
+	"scripts": {
+		"test": "node bin/cli-ai-chat-system.js help"
+	},
+	"keywords": [
+		"claude",
+		"gemini",
+		"codex",
+		"chatgpt",
+		"ai",
+		"chat",
+		"session",
+		"management",
+		"cli",
+		"scaffolding",
+		"init",
+		"template",
+		"ai-development",
+		"claude-code",
+		"session-tracking",
+		"multi-platform"
+	],
+	"author": "Nadeem K",
+	"license": "ISC",
+	"engines": {
+		"node": ">=14.0.0"
+	}
+}
