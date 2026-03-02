@@ -1,6 +1,7 @@
 # Decision Tree
 
 ## Session: [SESSION_TOPIC]
+**Project:** [PROJECT_NAME]
 
 ### Decision 1: [Decision Point] ([DATETIME])
 - **Context:**

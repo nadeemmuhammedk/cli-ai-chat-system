@@ -119,8 +119,8 @@ test('Codex commands exist in template/.codex/commands/', () => {
 
   const commands = ['new-session', 'checkpoint', 'continue-session', 'end-session', 'start-plan'];
   for (const command of commands) {
-    const commandPath = path.join(commandsPath, `${command}.md`);
-    assert(fs.existsSync(commandPath), `Command file not found in template: ${command}.md`);
+    const commandPath = path.join(commandsPath, `${command}.yaml`);
+    assert(fs.existsSync(commandPath), `Command file not found in template: ${command}.yaml`);
   }
 });
 
@@ -292,13 +292,22 @@ test('Gemini commands use PowerShell instead of bash', () => {
 // Test 19: All session templates have placeholders
 test('Session templates contain required placeholders', () => {
   const templatesPath = path.join(__dirname, 'template', '_templates', 'session');
-  const templates = ['context-template.md', 'messages-template.md', 'decisions-template.md'];
 
-  for (const template of templates) {
+  // Templates that need SESSION_TOPIC and PROJECT_NAME
+  const topicTemplates = ['context-template.md', 'decisions-template.md'];
+  for (const template of topicTemplates) {
     const templatePath = path.join(templatesPath, template);
     const content = fs.readFileSync(templatePath, 'utf8');
     assert(content.includes('[SESSION_TOPIC]') || content.includes('SESSION_TOPIC'), `${template} should contain SESSION_TOPIC placeholder`);
     assert(content.includes('[PROJECT_NAME]') || content.includes('PROJECT_NAME'), `${template} should contain PROJECT_NAME placeholder`);
+  }
+
+  // All templates should have CURRENT_DATETIME
+  const allTemplates = ['context-template.md', 'messages-template.md', 'decisions-template.md'];
+  for (const template of allTemplates) {
+    const templatePath = path.join(templatesPath, template);
+    const content = fs.readFileSync(templatePath, 'utf8');
+    assert(content.includes('[CURRENT_DATETIME]') || content.includes('CURRENT_DATETIME'), `${template} should contain CURRENT_DATETIME placeholder`);
   }
 });
 
