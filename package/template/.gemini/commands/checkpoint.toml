@@ -63,7 +63,7 @@ Handle responses:
 
 ## Step 5: Update context.md (if context changed)
 
-CRITICAL: Do this BEFORE the bash script.
+CRITICAL: Do this BEFORE the PowerShell script.
 
 Read current context.md, then use Edit tool to replace:
 - "## Current Focus" section with new validated content
@@ -71,68 +71,72 @@ Read current context.md, then use Edit tool to replace:
 
 Skip if no context changes (most checkpoints).
 
-## Step 6: Run Bash Script
+## Step 6: Run PowerShell Script
 
-```bash
-SESSION_PATH="[session-path]"
-CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-CHECKPOINT_NUMBER="[count-from-messages.md]"
-WORK_SUMMARY="[validated-summary]"
-DECISIONS_TO_ADD="[validated-decisions]"
+```powershell
+$SESSION_PATH = "[session-path]"
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$CHECKPOINT_NUMBER = "[count-from-messages.md]"
+$WORK_SUMMARY = "[validated-summary]"
+$DECISIONS_TO_ADD = "[validated-decisions]"
 
-MESSAGES_FILE="$SESSION_PATH/messages.md"
-DECISIONS_FILE="$SESSION_PATH/decisions.md"
-CONTEXT_FILE="$SESSION_PATH/context.md"
+$MESSAGES_FILE = "$SESSION_PATH/messages.md"
+$DECISIONS_FILE = "$SESSION_PATH/decisions.md"
+$CONTEXT_FILE = "$SESSION_PATH/context.md"
 
 # Append to messages.md
-cat >> "$MESSAGES_FILE" <<MESSAGES_EOF
+Add-Content -Path $MESSAGES_FILE -Value @"
 
 ### Exchange $CHECKPOINT_NUMBER
 **User:** [User activities since last checkpoint]
 **Assistant:** $WORK_SUMMARY
 **Outcome:** [Outcome description]
-MESSAGES_EOF
+"@
 
 # Update messages.md timestamp
-sed -i "s/\\*Last Checkpoint:.*/\\*Last Checkpoint: $CURRENT_DATETIME*/" "$MESSAGES_FILE"
+(Get-Content $MESSAGES_FILE) -replace '\*Last Checkpoint:.*', "*Last Checkpoint: $CURRENT_DATETIME*" | Set-Content $MESSAGES_FILE
 
 # Append decisions (if any)
-if [ -n "$DECISIONS_TO_ADD" ]; then
-  DECISION_COUNT=$(grep -oP 'Decision Count: \K\d+' "$DECISIONS_FILE" 2>/dev/null || echo 0)
-  cat >> "$DECISIONS_FILE" <<DECISIONS_EOF
+if ($DECISIONS_TO_ADD) {
+	$DECISION_COUNT = if ((Get-Content $DECISIONS_FILE -Raw) -match 'Decision Count: (\d+)') { $matches[1] } else { 0 }
+	Add-Content -Path $DECISIONS_FILE -Value @"
 
 $DECISIONS_TO_ADD
-DECISIONS_EOF
-  NEW_COUNT=$((DECISION_COUNT + 1))
-  sed -i "s/Decision Count: [0-9]*/Decision Count: $NEW_COUNT/" "$DECISIONS_FILE"
-fi
+"@
+	$NEW_COUNT = [int]$DECISION_COUNT + 1
+	(Get-Content $DECISIONS_FILE) -replace 'Decision Count: \d+', "Decision Count: $NEW_COUNT" | Set-Content $DECISIONS_FILE
+}
 
-sed -i "s/\\*Decision Count:.*/\\*Decision Count: ${NEW_COUNT:-$DECISION_COUNT} | Last Updated: $CURRENT_DATETIME*/" "$DECISIONS_FILE"
+(Get-Content $DECISIONS_FILE) -replace '\*Decision Count:.*', "*Decision Count: ${NEW_COUNT}:$DECISION_COUNT} | Last Updated: $CURRENT_DATETIME*" | Set-Content $DECISIONS_FILE
 
 # Update context.md timestamp only (content handled by Edit tool)
-sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$CONTEXT_FILE"
+(Get-Content $CONTEXT_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $CONTEXT_FILE
 
 # Update registry lastActive
-REGISTRY_FILE=".cli-ai-chat/sessions.json"
-jq --arg path "$SESSION_PATH" --arg time "$CURRENT_DATETIME" \
-  '.sessions |= map(if .path == $path then .lastActive = $time else . end)' \
-  "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+$REGISTRY_FILE = ".cli-ai-chat/sessions.json"
+jq --arg path "$SESSION_PATH" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
+Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
 
-echo "✓ Checkpoint saved"
-echo "✓ Updated: context.md, messages.md, decisions.md"
-echo "✓ Timestamp: $CURRENT_DATETIME"
+Write-Host "✓ Checkpoint saved"
+Write-Host "✓ Updated: context.md, messages.md, decisions.md"
+Write-Host "✓ Timestamp: $CURRENT_DATETIME"
 
 # Planning mode status
-PLANNING_DIR="$SESSION_PATH/planning_mode"
-if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
-  TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)
-  DONE_FILE=$(ls "$PLANNING_DIR"/*-done.md 2>/dev/null | head -1)
-  PENDING_COUNT=$(grep -c "^[0-9]*\\. \\[ \\]" "$TODO_FILE" 2>/dev/null || echo 0)
-  COMPLETED_COUNT=$(grep -c "^[0-9]*\\. \\[x\\]" "$DONE_FILE" 2>/dev/null || echo 0)
-  echo ""
-  echo "Planning Mode: Pending=$PENDING_COUNT | Completed=$COMPLETED_COUNT"
-  sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$TODO_FILE" 2>/dev/null
-  sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$DONE_FILE" 2>/dev/null
-fi
+$PLANNING_DIR = "$SESSION_PATH/planning_mode"
+$PLAN_FILES = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue
+if ($PLAN_FILES) {
+	$TODO_FILE = (Get-ChildItem "$PLANNING_DIR/*-todo.md" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+	$DONE_FILE = (Get-ChildItem "$PLANNING_DIR/*-done.md" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+	$PENDING_COUNT = if ($TODO_FILE) { (Select-String -Pattern '^\d+\\. \[ \]' -Path $TODO_FILE).Matches.Count } else { 0 }
+	$COMPLETED_COUNT = if ($DONE_FILE) { (Select-String -Pattern '^\d+\\. \[x\]' -Path $DONE_FILE).Matches.Count } else { 0 }
+	Write-Host ""
+	Write-Host "Planning Mode: Pending=$PENDING_COUNT | Completed=$COMPLETED_COUNT"
+	if ($TODO_FILE) {
+		(Get-Content $TODO_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $TODO_FILE
+	}
+	if ($DONE_FILE) {
+		(Get-Content $DONE_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $DONE_FILE
+	}
+}
 ```
 """

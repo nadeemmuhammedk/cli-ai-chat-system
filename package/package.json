@@ -1,6 +1,6 @@
 {
 	"name": "cli-ai-chat-system",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Unified AI chat session management system for Claude, Gemini, and Codex CLI tools",
 	"bin": {
 		"cli-ai-chat-system": "./bin/cli-ai-chat-system.js"
@@ -10,7 +10,13 @@
 		"template/"
 	],
 	"scripts": {
-		"test": "node bin/cli-ai-chat-system.js help"
+		"test": "node test-package.js",
+		"validate": "node test-package.js",
+		"prepublishOnly": "npm test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nadeemmuhammedk/cli-ai-chat-system.git"
 	},
 	"keywords": [
 		"claude",
@@ -32,6 +38,10 @@
 	],
 	"author": "Nadeem K",
 	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/nadeemmuhammedk/cli-ai-chat-system/issues"
+	},
+	"homepage": "https://github.com/nadeemmuhammedk/cli-ai-chat-system#readme",
 	"engines": {
 		"node": ">=14.0.0"
 	}

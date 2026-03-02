@@ -44,28 +44,26 @@ Validate the session directory exists on disk.
 
 ## Step 4: Update Registry and Active Pointer
 
-```bash
-REGISTRY_FILE=".cli-ai-chat/sessions.json"
-ACTIVE_FILE=".cli-ai-chat/active-session.txt"
-TARGET_SESSION="[selected-session-path]"
-CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+```powershell
+$REGISTRY_FILE = ".cli-ai-chat/sessions.json"
+$ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
+$TARGET_SESSION = "[selected-session-path]"
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 # Pause previous active session if different
-PREV_ACTIVE=$(cat "$ACTIVE_FILE" 2>/dev/null)
-if [ -n "$PREV_ACTIVE" ] && [ "$PREV_ACTIVE" != "$TARGET_SESSION" ]; then
-  jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" \
-    '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' \
-    "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
-  echo "⚠ Previous session paused: $(basename "$PREV_ACTIVE")"
-fi
+$PREV_ACTIVE = Get-Content $ACTIVE_FILE -ErrorAction SilentlyContinue
+if ($PREV_ACTIVE -and $PREV_ACTIVE -ne $TARGET_SESSION) {
+	jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
+	Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
+	Write-Host "⚠ Previous session paused: $(Split-Path -Leaf $PREV_ACTIVE)"
+}
 
 # Mark target as in-progress
-jq --arg path "$TARGET_SESSION" --arg time "$CURRENT_DATETIME" \
-  '.sessions |= map(if .path == $path then .status = "in-progress" | .lastActive = $time else . end)' \
-  "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+jq --arg path "$TARGET_SESSION" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = "in-progress" | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
+Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
 
 # Update active pointer
-echo "$TARGET_SESSION" > "$ACTIVE_FILE"
+$TARGET_SESSION | Set-Content $ACTIVE_FILE
 ```
 
 ## Step 5: Display Session Context
@@ -74,17 +72,17 @@ Read `[session-path]/context.md` and show it fully under a "Context:" heading.
 
 ## Step 6: Check Planning Mode
 
-```bash
-PLANNING_DIR="[session-path]/planning_mode"
-PLAN_FILE=$(ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | head -1)
-if [ -n "$PLAN_FILE" ]; then
-  PLAN_NAME=$(basename "$PLAN_FILE" | sed 's/^[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}-//' | sed 's/-plan\\.md$//')
-  TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)
-  DONE_FILE=$(ls "$PLANNING_DIR"/*-done.md 2>/dev/null | head -1)
-  TODO_COUNT=$(grep -c "^[0-9]*\\. \\[ \\]" "$TODO_FILE" 2>/dev/null || echo 0)
-  DONE_COUNT=$(grep -c "^[0-9]*\\. \\[x\\]" "$DONE_FILE" 2>/dev/null || echo 0)
-  echo "$PLAN_NAME|$TODO_COUNT|$DONE_COUNT"
-fi
+```powershell
+$PLANNING_DIR = "[session-path]/planning_mode"
+$PLAN_FILE = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($PLAN_FILE) {
+	$PLAN_NAME = (Split-Path -Leaf $PLAN_FILE) -replace '^\d{4}-\d{2}-\d{2}-', '' -replace '-plan\.md$', ''
+	$TODO_FILE = Get-ChildItem "$PLANNING_DIR/*-todo.md" -ErrorAction SilentlyContinue | Select-Object -First 1
+	$DONE_FILE = Get-ChildItem "$PLANNING_DIR/*-done.md" -ErrorAction SilentlyContinue | Select-Object -First 1
+	$TODO_COUNT = if ($TODO_FILE) { (Select-String -Pattern '^\d+\\. \[ \]' -Path $TODO_FILE).Matches.Count } else { 0 }
+	$DONE_COUNT = if ($DONE_FILE) { (Select-String -Pattern '^\d+\\. \[x\]' -Path $DONE_FILE).Matches.Count } else { 0 }
+	Write-Host "$PLAN_NAME|$TODO_COUNT|$DONE_COUNT"
+}
 ```
 
 If planning active, display:
