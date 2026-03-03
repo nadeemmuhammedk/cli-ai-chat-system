@@ -1,6 +1,6 @@
 description = "Initiate planning mode for complex, multi-phase work"
 
-prompt = """
+prompt = '''
 Start a new planning cycle in the current active session.
 
 **Plan name:** {{args}}
@@ -167,4 +167,4 @@ Next steps:
      - Move completed tasks to done.md
      - Alert you if work deviates from the plan
 ```
-"""
+'''

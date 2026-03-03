@@ -1,6 +1,6 @@
 description = "Save a checkpoint of the current session's progress"
 
-prompt = """
+prompt = '''
 Create a checkpoint for the active session.
 
 ## Step 1: Read Active Session
@@ -107,7 +107,7 @@ $DECISIONS_TO_ADD
 	(Get-Content $DECISIONS_FILE) -replace 'Decision Count: \d+', "Decision Count: $NEW_COUNT" | Set-Content $DECISIONS_FILE
 }
 
-(Get-Content $DECISIONS_FILE) -replace '\*Decision Count:.*', "*Decision Count: ${NEW_COUNT}:$DECISION_COUNT} | Last Updated: $CURRENT_DATETIME*" | Set-Content $DECISIONS_FILE
+(Get-Content $DECISIONS_FILE) -replace '\*Decision Count:.*', "*Decision Count: $NEW_COUNT | Last Updated: $CURRENT_DATETIME*" | Set-Content $DECISIONS_FILE
 
 # Update context.md timestamp only (content handled by Edit tool)
 (Get-Content $CONTEXT_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $CONTEXT_FILE
@@ -139,4 +139,4 @@ if ($PLAN_FILES) {
 	}
 }
 ```
-"""
+'''

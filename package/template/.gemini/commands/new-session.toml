@@ -1,6 +1,6 @@
 description = "Create a new AI chat session with organized folder structure"
 
-prompt = """
+prompt = '''
 Create a new session folder for organizing this AI chat conversation.
 
 **Arguments:** {{args}}
@@ -136,4 +136,4 @@ You can now:
   - Use /start-plan for complex multi-phase work
   - Use /end-session when complete
 ```
-"""
+'''

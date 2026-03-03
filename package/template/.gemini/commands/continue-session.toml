@@ -1,6 +1,6 @@
 description = "Resume work on an existing session"
 
-prompt = """
+prompt = '''
 Continue working on a previous session.
 
 **Arguments:** {{args}} (optional - session number)
@@ -106,4 +106,4 @@ If planning active, display:
 
 You can now use /checkpoint, /start-plan, or /end-session.
 ```
-"""
+'''

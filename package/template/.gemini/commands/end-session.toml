@@ -1,6 +1,6 @@
 description = "Finalize and close the current session"
 
-prompt = """
+prompt = '''
 End the active session and finalize all documentation.
 
 ## Step 1: Read Active Session
@@ -149,4 +149,4 @@ Write-Host "  Topic: $SESSION_TOPIC"
 Write-Host "  Finalized: $CURRENT_DATETIME"
 Write-Host "✓ Active session pointer cleared"
 ```
-"""
+'''
