@@ -7,20 +7,15 @@ prompt: |
 
   ## Step 0: Validate Prerequisites
 
-  Run the following bash check:
-  ```bash
-  if ! command -v jq &> /dev/null; then
-    echo "ERROR: jq is not installed"
-    echo "Install with: choco install jq (Windows) or apt install jq (Linux)"
-    exit 1
-  fi
-  if [ ! -f "_templates/session/context-template.md" ] || \
-     [ ! -f "_templates/session/messages-template.md" ] || \
-     [ ! -f "_templates/session/decisions-template.md" ]; then
-    echo "ERROR: Template files missing in _templates/session/"
-    exit 1
-  fi
-  echo "Prerequisites OK"
+  Run the following PowerShell check:
+  ```powershell
+  if (!(Test-Path "_templates/session/context-template.md") -or
+  	!(Test-Path "_templates/session/messages-template.md") -or
+  	!(Test-Path "_templates/session/decisions-template.md")) {
+  	Write-Error "ERROR: Template files missing in _templates/session/"
+  	exit 1
+  }
+  Write-Host "Prerequisites OK"
   ```
   If validation fails, stop and display the error.
 
@@ -41,87 +36,103 @@ prompt: |
 
   ## Step 2: Check Session Doesn't Already Exist
 
-  ```bash
-  SESSION_PATH="chats/projects/[project]/[YYYY-MM-DD]-[topic]"
-  [ -d "$SESSION_PATH" ] && echo "EXISTS" || echo "NOT_EXISTS"
+  ```powershell
+  $SESSION_PATH = "chats/projects/[project]/[YYYY-MM-DD]-[topic]"
+  if (Test-Path $SESSION_PATH) { Write-Host "EXISTS" } else { Write-Host "NOT_EXISTS" }
   ```
 
   If EXISTS, tell user to choose a different topic or use /continue-session.
 
   ## Step 3: Create Session Structure
 
-  Execute a single bash script with all values substituted:
+  Execute a single PowerShell script with all values substituted:
 
-  ```bash
-  #!/bin/bash
-  PROJECT_NAME="[project-name]"
-  PROJECT_DISPLAY="[project-display]"
-  SESSION_TOPIC="[session-topic]"
-  CURRENT_DATE="[YYYY-MM-DD]"
-  CURRENT_DATETIME="[ISO-8601-timestamp]"
+  ```powershell
+  $PROJECT_NAME = "[project-name]"
+  $PROJECT_DISPLAY = "[project-display]"
+  $SESSION_TOPIC = "[session-topic]"
+  $CURRENT_DATE = "[YYYY-MM-DD]"
+  $CURRENT_DATETIME = "[ISO-8601-timestamp]"
 
-  if [ -n "$PROJECT_NAME" ]; then
-    SESSION_PATH="chats/projects/$PROJECT_NAME/$CURRENT_DATE-$SESSION_TOPIC"
-  else
-    SESSION_PATH="chats/unnamed_projects/$CURRENT_DATE-$SESSION_TOPIC"
-  fi
+  if ($PROJECT_NAME) {
+  	$SESSION_PATH = "chats/projects/$PROJECT_NAME/$CURRENT_DATE-$SESSION_TOPIC"
+  } else {
+  	$SESSION_PATH = "chats/unnamed_projects/$CURRENT_DATE-$SESSION_TOPIC"
+  }
 
-  TEMPLATE_DIR="_templates/session"
-  REGISTRY_FILE=".cli-ai-chat/sessions.json"
-  ACTIVE_FILE=".cli-ai-chat/active-session.txt"
+  $TEMPLATE_DIR = "_templates/session"
+  $REGISTRY_FILE = ".cli-ai-chat/sessions.json"
+  $ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
 
   # Create folder structure
-  mkdir -p "$SESSION_PATH"/{artifacts,core_files,core_instructions,uploaded_files,planning_mode/archive}
-
-  # Copy and fill templates
-  copy_and_replace() {
-    local src="$1"
-    local dest="$2"
-    cp "$src" "$dest"
-    sed -i "s/\[SESSION_TOPIC\]/$SESSION_TOPIC/g" "$dest"
-    sed -i "s/\[PROJECT_NAME\]/$PROJECT_DISPLAY/g" "$dest"
-    sed -i "s/\[CURRENT_DATETIME\]/$CURRENT_DATETIME/g" "$dest"
-    sed -i "s/\[DATETIME\]/$CURRENT_DATETIME/g" "$dest"
+  $dirs = "artifacts", "core_files", "core_instructions", "uploaded_files", "planning_mode/archive"
+  foreach ($dir in $dirs) {
+  	New-Item -ItemType Directory -Force -Path "$SESSION_PATH/$dir" | Out-Null
   }
-  copy_and_replace "$TEMPLATE_DIR/context-template.md" "$SESSION_PATH/context.md"
-  copy_and_replace "$TEMPLATE_DIR/messages-template.md" "$SESSION_PATH/messages.md"
-  copy_and_replace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.md"
+
+  function Copy-AndReplace($src, $dest) {
+  	Copy-Item $src $dest
+  	(Get-Content $dest) `
+  		-replace '\[SESSION_TOPIC\]', $SESSION_TOPIC `
+  		-replace '\[PROJECT_NAME\]', $PROJECT_DISPLAY `
+  		-replace '\[CURRENT_DATETIME\]', $CURRENT_DATETIME `
+  		-replace '\[DATETIME\]', $CURRENT_DATETIME | Set-Content $dest
+  }
+
+  Copy-AndReplace "$TEMPLATE_DIR/context-template.md" "$SESSION_PATH/context.md"
+  Copy-AndReplace "$TEMPLATE_DIR/messages-template.md" "$SESSION_PATH/messages.md"
+  Copy-AndReplace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.md"
 
   # Initialize registry if needed
-  mkdir -p .cli-ai-chat
-  [ ! -f "$REGISTRY_FILE" ] && echo '{"sessions": []}' > "$REGISTRY_FILE"
+  if (!(Test-Path ".cli-ai-chat")) { New-Item -ItemType Directory ".cli-ai-chat" | Out-Null }
+  if (!(Test-Path $REGISTRY_FILE)) { '{"sessions": []}' | Set-Content $REGISTRY_FILE }
+
+  # Load registry
+  try {
+  	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+  } catch {
+  	Write-Error "Failed to read registry: $_"
+  	exit 1
+  }
 
   # Pause previous active session if exists
-  PREV_ACTIVE=""
-  [ -f "$ACTIVE_FILE" ] && PREV_ACTIVE=$(cat "$ACTIVE_FILE")
-  if [ -n "$PREV_ACTIVE" ]; then
-    jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" \
-      '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' \
-      "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
-    echo "Previous session paused: $PREV_ACTIVE"
-  fi
+  if (Test-Path $ACTIVE_FILE) {
+  	$PREV_ACTIVE = Get-Content $ACTIVE_FILE
+  	if ($PREV_ACTIVE) {
+  		$prevSession = $registry.sessions | Where-Object { $_.path -eq $PREV_ACTIVE }
+  		if ($prevSession) {
+  			$prevSession.status = "paused"
+  			$prevSession.lastActive = $CURRENT_DATETIME
+  			Write-Host "Previous session paused: $PREV_ACTIVE"
+  		}
+  	}
+  }
 
   # Add new session to registry
-  jq --arg path "$SESSION_PATH" \
-     --arg topic "$SESSION_TOPIC" \
-     --arg project "$PROJECT_DISPLAY" \
-     --arg created "$CURRENT_DATETIME" \
-     '.sessions += [{
-       "path": $path,
-       "topic": $topic,
-       "project": $project,
-       "status": "in-progress",
-       "platform": "codex",
-       "created": $created,
-       "lastActive": $created
-     }]' \
-     "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+  $newSession = [PSCustomObject]@{
+  	path = $SESSION_PATH
+  	topic = $SESSION_TOPIC
+  	project = $PROJECT_DISPLAY
+  	status = "in-progress"
+  	platform = "codex"
+  	created = $CURRENT_DATETIME
+  	lastActive = $CURRENT_DATETIME
+  }
+  $registry.sessions += $newSession
+
+  # Save registry
+  try {
+  	$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+  } catch {
+  	Write-Error "Failed to save registry: $_"
+  	exit 1
+  }
 
   # Set active pointer
-  echo "$SESSION_PATH" > "$ACTIVE_FILE"
+  $SESSION_PATH | Set-Content $ACTIVE_FILE
 
-  echo "✓ Session created: $SESSION_PATH"
-  echo "✓ Registry updated"
+  Write-Host "✓ Session created: $SESSION_PATH"
+  Write-Host "✓ Registry updated"
   ```
 
   ## Step 4: Confirm Success

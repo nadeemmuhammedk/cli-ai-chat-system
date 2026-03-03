@@ -21,7 +21,7 @@ prompt: |
 
   b. Generate a comprehensive session summary.
 
-  c. Present numbered selection to user:
+  c. **STOP: Present numbered selection to user and WAIT for response:**
   ```
   📋 Final Session Content
 
@@ -35,24 +35,27 @@ prompt: |
   Your selection:
   ```
 
-  d. Handle modifications if selected.
+  d. After user responds, handle modifications if selected.
 
   ## Step 4: Planning Summary (if planning mode was used)
 
-  ```bash
-  PLANNING_DIR="[session-path]/planning_mode"
-  if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
-    TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)
-    DONE_FILE=$(ls "$PLANNING_DIR"/*-done.md 2>/dev/null | head -1)
-    TODO_COUNT=$(grep -c "^[0-9]*\. \[ \]" "$TODO_FILE" 2>/dev/null || echo 0)
-    DONE_COUNT=$(grep -c "^[0-9]*\. \[x\]" "$DONE_FILE" 2>/dev/null || echo 0)
-    TOTAL=$((TODO_COUNT + DONE_COUNT))
-    [ $TOTAL -gt 0 ] && PERCENT=$((DONE_COUNT * 100 / TOTAL)) || PERCENT=0
-    echo "Planning: $DONE_COUNT/$TOTAL tasks ($PERCENT%)"
-  fi
+  First run this to check planning status:
+  ```powershell
+  $PLANNING_DIR = "[session-path]/planning_mode"
+  $PLAN_FILES = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue
+  if ($PLAN_FILES) {
+  	$PLAN_FILE = $PLAN_FILES[0]
+  	$TODO_FILE = Get-ChildItem "$PLANNING_DIR/*-todo.md" -ErrorAction SilentlyContinue | Select-Object -First 1
+  	$DONE_FILE = Get-ChildItem "$PLANNING_DIR/*-done.md" -ErrorAction SilentlyContinue | Select-Object -First 1
+  	$TODO_COUNT = if ($TODO_FILE) { (Select-String -Pattern '^\d+\\. \[ \]' -Path $TODO_FILE).Matches.Count } else { 0 }
+  	$DONE_COUNT = if ($DONE_FILE) { (Select-String -Pattern '^\d+\\. \[x\]' -Path $DONE_FILE).Matches.Count } else { 0 }
+  	$TOTAL = $TODO_COUNT + $DONE_COUNT
+  	$PERCENT = if ($TOTAL -gt 0) { [math]::Round($DONE_COUNT * 100 / $TOTAL) } else { 0 }
+  	Write-Host "Planning: $DONE_COUNT/$TOTAL tasks ($PERCENT%)"
+  }
   ```
 
-  If incomplete tasks exist, ask:
+  **If incomplete tasks exist ($TOTAL -gt $DONE_COUNT), STOP and ASK:**
   ```
   How should incomplete tasks be handled?
 
@@ -63,8 +66,11 @@ prompt: |
   Your selection:
   ```
 
+  Wait for user response before continuing.
+
   ## Step 5: Get Final Status
 
+  **STOP: Ask the user for final status and WAIT for response:**
   ```
   What is the final status of this session?
 
@@ -75,61 +81,95 @@ prompt: |
   Your selection:
   ```
 
-  ## Step 6: Finalize with Bash Script
+  After receiving user input, map: 1=completed, 2=paused, 3=abandoned
 
-  ```bash
-  SESSION_PATH="[session-path]"
-  CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  FINAL_STATUS="[completed|paused|abandoned]"
-  FINAL_SUMMARY="[validated-summary]"
-  DECISIONS_TO_ADD="[validated-decisions]"
+  ## Step 6: Finalize with PowerShell Script
 
-  ACTIVE_FILE=".cli-ai-chat/active-session.txt"
-  REGISTRY_FILE=".cli-ai-chat/sessions.json"
-  MESSAGES_FILE="$SESSION_PATH/messages.md"
-  DECISIONS_FILE="$SESSION_PATH/decisions.md"
-  CONTEXT_FILE="$SESSION_PATH/context.md"
+  ONLY after gathering all user input above, execute:
+  - $FINAL_STATUS = user's selection from Step 5
+  - $FINAL_SUMMARY = validated content from Step 3
+  - $DECISIONS_TO_ADD = any decisions from Step 3
+
+  ```powershell
+  $SESSION_PATH = "[session-path]"
+  $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  $FINAL_STATUS = "[completed|paused|abandoned]"
+  $FINAL_SUMMARY = "[validated-summary]"
+  $DECISIONS_TO_ADD = "[validated-decisions]"
+
+  $ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
+  $REGISTRY_FILE = ".cli-ai-chat/sessions.json"
+  $MESSAGES_FILE = "$SESSION_PATH/messages.md"
+  $DECISIONS_FILE = "$SESSION_PATH/decisions.md"
+  $CONTEXT_FILE = "$SESSION_PATH/context.md"
 
   # Append final summary to messages.md
-  cat >> "$MESSAGES_FILE" <<MESSAGES_EOF
+  Add-Content -Path $MESSAGES_FILE -Value @"
 
   ### Final Summary
   **User:** Ending session
   **Assistant:** $FINAL_SUMMARY
   **Outcome:** Session finalized with status: $FINAL_STATUS
-  MESSAGES_EOF
+  "@
 
   # Append final decisions (if any)
-  if [ -n "$DECISIONS_TO_ADD" ]; then
-    cat >> "$DECISIONS_FILE" <<DECISIONS_EOF
+  if ($DECISIONS_TO_ADD) {
+  	Add-Content -Path $DECISIONS_FILE -Value @"
 
   ### Final Session Status ($CURRENT_DATETIME)
   $DECISIONS_TO_ADD
-  DECISIONS_EOF
-  fi
+  "@
+  }
 
   # Update context.md status
-  sed -i "/^## Status/,/^##/ {/^## Status/!{/^##/!d}}" "$CONTEXT_FILE" 2>/dev/null
-  sed -i "/^## Status/a $FINAL_STATUS" "$CONTEXT_FILE"
-  sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$CONTEXT_FILE"
+  $contextLines = Get-Content $CONTEXT_FILE
+  $newLines = @()
+  $skip = $false
+  for ($i = 0; $i -lt $contextLines.Count; $i++) {
+  	$line = $contextLines[$i]
+  	if ($line -match '^## Status') {
+  		$newLines += $line
+  		$newLines += $FINAL_STATUS
+  		$skip = $true
+  		continue
+  	}
+  	if ($skip -and $line -match '^##') {
+  		$skip = $false
+  	}
+  	if (-not $skip) {
+  		$newLines += $line
+  	}
+  }
+  $newLines -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $CONTEXT_FILE
 
   # Update registry
-  jq --arg path "$SESSION_PATH" \
-     --arg status "$FINAL_STATUS" \
-     --arg time "$CURRENT_DATETIME" \
-     '.sessions |= map(if .path == $path then .status = $status | .lastActive = $time else . end)' \
-     "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+  try {
+  	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+  	$session = $registry.sessions | Where-Object { $_.path -eq $SESSION_PATH }
+  	if ($session) {
+  		$session.status = $FINAL_STATUS
+  		$session.lastActive = $CURRENT_DATETIME
+  		$PROJECT_NAME = $session.project
+  		$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+  	} else {
+  		Write-Error "Session not found: $SESSION_PATH"
+  		exit 1
+  	}
+  } catch {
+  	Write-Error "Failed to update registry: $_"
+  	exit 1
+  }
 
   # Clear active pointer
-  rm -f "$ACTIVE_FILE"
+  Remove-Item $ACTIVE_FILE -Force -ErrorAction SilentlyContinue
 
-  SESSION_TOPIC=$(basename "$SESSION_PATH" | sed 's/^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//')
-  PROJECT_NAME=$(jq -r --arg path "$SESSION_PATH" '.sessions[] | select(.path == $path) | .project' "$REGISTRY_FILE")
+  # Display summary
+  $SESSION_TOPIC = (Split-Path -Leaf $SESSION_PATH) -replace '^\d{4}-\d{2}-\d{2}-', ''
 
-  echo ""
-  echo "✓ Session finalized: $FINAL_STATUS"
-  echo "  Project: $PROJECT_NAME"
-  echo "  Topic: $SESSION_TOPIC"
-  echo "  Finalized: $CURRENT_DATETIME"
-  echo "✓ Active session pointer cleared"
+  Write-Host ""
+  Write-Host "✓ Session finalized: $FINAL_STATUS"
+  Write-Host "  Project: $PROJECT_NAME"
+  Write-Host "  Topic: $SESSION_TOPIC"
+  Write-Host "  Finalized: $CURRENT_DATETIME"
+  Write-Host "✓ Active session pointer cleared"
   ```

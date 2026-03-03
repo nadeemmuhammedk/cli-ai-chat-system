@@ -7,16 +7,19 @@ prompt: |
 
   ## Step 1: Validate Active Session
 
-  ```bash
-  ACTIVE_FILE=".cli-ai-chat/active-session.txt"
-  if [ ! -f "$ACTIVE_FILE" ]; then
-    echo "ERROR: No active session found"
-    echo "Run /new-session or /continue-session first"
-    exit 1
-  fi
-  SESSION_PATH=$(cat "$ACTIVE_FILE")
-  [ ! -d "$SESSION_PATH" ] && echo "ERROR: Session directory not found: $SESSION_PATH" && exit 1
-  echo "Active session: $SESSION_PATH"
+  ```powershell
+  $ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
+  if (!(Test-Path $ACTIVE_FILE -PathType Leaf)) {
+  	Write-Error "ERROR: No active session found"
+  	Write-Host "Run /new-session or /continue-session first"
+  	exit 1
+  }
+  $SESSION_PATH = Get-Content $ACTIVE_FILE
+  if (!(Test-Path $SESSION_PATH -PathType Container)) {
+  	Write-Error "ERROR: Session directory not found: $SESSION_PATH"
+  	exit 1
+  }
+  Write-Host "Active session: $SESSION_PATH"
   ```
 
   ## Step 2: Validate Plan Name
@@ -26,39 +29,40 @@ prompt: |
 
   ## Step 3: Archive Existing Planning Files (if any)
 
-  ```bash
-  PLANNING_DIR="$SESSION_PATH/planning_mode"
-  TIMESTAMP=$(date +%Y-%m-%d-%H%M)
-  mkdir -p "$PLANNING_DIR"
+  ```powershell
+  $PLANNING_DIR = "$SESSION_PATH/planning_mode"
+  $TIMESTAMP = (Get-Date).ToString("yyyy-MM-dd-HHmm")
+  New-Item -ItemType Directory -Force -Path $PLANNING_DIR | Out-Null
 
-  if ls "$PLANNING_DIR"/*.md 2>/dev/null | grep -v "^$PLANNING_DIR/archive" | grep -q .; then
-    mkdir -p "$PLANNING_DIR/archive"
-    for file in "$PLANNING_DIR"/*.md; do
-      if [ -f "$file" ] && [[ ! "$file" =~ archive ]]; then
-        archived_name="archived-$TIMESTAMP-$(basename "$file")"
-        mv "$file" "$PLANNING_DIR/archive/$archived_name"
-        echo "Archived: $(basename "$file") → $archived_name"
-      fi
-    done
-    echo "Old planning cycle archived"
-  fi
+  $EXISTING_FILES = Get-ChildItem "$PLANNING_DIR/*.md" -ErrorAction SilentlyContinue | Where-Object { $_.Directory.Name -ne "archive" }
+  if ($EXISTING_FILES) {
+  	New-Item -ItemType Directory -Force -Path "$PLANNING_DIR/archive" | Out-Null
+  	foreach ($file in $EXISTING_FILES) {
+  		if (Test-Path $file -PathType Leaf) {
+  			$archived_name = "archived-$TIMESTAMP-$(Split-Path -Leaf $file)"
+  			Move-Item $file "$PLANNING_DIR/archive/$archived_name"
+  			Write-Host "Archived: $(Split-Path -Leaf $file) → $archived_name"
+  		}
+  	}
+  	Write-Host "Old planning cycle archived"
+  }
   ```
 
   ## Step 4: Create Planning Files
 
-  ```bash
-  PLAN_NAME="[validated-plan-name]"
-  CURRENT_DATE=$(date +%Y-%m-%d)
-  CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  PLANNING_DIR="$SESSION_PATH/planning_mode"
+  ```powershell
+  $PLAN_NAME = "[validated-plan-name]"
+  $CURRENT_DATE = (Get-Date).ToString("yyyy-MM-dd")
+  $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  $PLANNING_DIR = "$SESSION_PATH/planning_mode"
 
   # plan.md
-  PLAN_FILE="$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-plan.md"
-  cat > "$PLAN_FILE" <<'PLAN_EOF'
-  # Planning Document: PLAN_NAME_PLACEHOLDER
+  $PLAN_FILE = "$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-plan.md"
+  $planContent = @"
+  # Planning Document: $PLAN_NAME
 
   ## Created
-  DATETIME_PLACEHOLDER
+  $CURRENT_DATETIME
 
   ## Overview
   [Brief description of what this planning cycle aims to accomplish]
@@ -96,18 +100,17 @@ prompt: |
   [Additional context or assumptions]
 
   ---
-  *Last Updated: DATETIME_PLACEHOLDER*
-  PLAN_EOF
-  sed -i "s/PLAN_NAME_PLACEHOLDER/$PLAN_NAME/g" "$PLAN_FILE"
-  sed -i "s/DATETIME_PLACEHOLDER/$CURRENT_DATETIME/g" "$PLAN_FILE"
+  *Last Updated: $CURRENT_DATETIME*
+  "@
+  Set-Content -Path $PLAN_FILE -Value $planContent
 
   # todo.md
-  TODO_FILE="$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-todo.md"
-  cat > "$TODO_FILE" <<'TODO_EOF'
-  # Task List: PLAN_NAME_PLACEHOLDER
+  $TODO_FILE = "$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-todo.md"
+  $todoContent = @"
+  # Task List: $PLAN_NAME
 
   ## Created
-  DATETIME_PLACEHOLDER
+  $CURRENT_DATETIME
 
   ## Phase 1: [Phase Name]
   1. [ ] Task description
@@ -118,33 +121,31 @@ prompt: |
   4. [ ] Task description
 
   ---
-  *Last Updated: DATETIME_PLACEHOLDER*
+  *Last Updated: $CURRENT_DATETIME*
   *Tasks Remaining: [Count unchecked items]*
-  TODO_EOF
-  sed -i "s/PLAN_NAME_PLACEHOLDER/$PLAN_NAME/g" "$TODO_FILE"
-  sed -i "s/DATETIME_PLACEHOLDER/$CURRENT_DATETIME/g" "$TODO_FILE"
+  "@
+  Set-Content -Path $TODO_FILE -Value $todoContent
 
   # done.md
-  DONE_FILE="$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-done.md"
-  cat > "$DONE_FILE" <<'DONE_EOF'
-  # Completed Tasks: PLAN_NAME_PLACEHOLDER
+  $DONE_FILE = "$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-done.md"
+  $doneContent = @"
+  # Completed Tasks: $PLAN_NAME
 
   ## Created
-  DATETIME_PLACEHOLDER
+  $CURRENT_DATETIME
 
   ## Completions
 
   (Tasks will be added here as they are completed from todo.md)
 
   ---
-  *Last Updated: DATETIME_PLACEHOLDER*
+  *Last Updated: $CURRENT_DATETIME*
   *Total Completed: 0*
-  DONE_EOF
-  sed -i "s/PLAN_NAME_PLACEHOLDER/$PLAN_NAME/g" "$DONE_FILE"
-  sed -i "s/DATETIME_PLACEHOLDER/$CURRENT_DATETIME/g" "$DONE_FILE"
+  "@
+  Set-Content -Path $DONE_FILE -Value $doneContent
 
-  echo "✓ Planning mode activated: $PLAN_NAME"
-  echo "Files: plan.md, todo.md, done.md"
+  Write-Host "✓ Planning mode activated: $PLAN_NAME"
+  Write-Host "Files: plan.md, todo.md, done.md"
   ```
 
   ## Step 5: Confirm and Explain Behaviors
