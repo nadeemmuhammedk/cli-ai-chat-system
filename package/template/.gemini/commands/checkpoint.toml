@@ -114,8 +114,16 @@ $DECISIONS_TO_ADD
 
 # Update registry lastActive
 $REGISTRY_FILE = ".cli-ai-chat/sessions.json"
-jq --arg path "$SESSION_PATH" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
+try {
+	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+	$session = $registry.sessions | Where-Object { $_.path -eq $SESSION_PATH }
+	if ($session) {
+		$session.lastActive = $CURRENT_DATETIME
+		$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+	}
+} catch {
+	Write-Error "Failed to update registry timestamp: $_"
+}
 
 Write-Host "✓ Checkpoint saved"
 Write-Host "✓ Updated: context.md, messages.md, decisions.md"

@@ -50,20 +50,39 @@ $ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
 $TARGET_SESSION = "[selected-session-path]"
 $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
-# Pause previous active session if different
-$PREV_ACTIVE = Get-Content $ACTIVE_FILE -ErrorAction SilentlyContinue
-if ($PREV_ACTIVE -and $PREV_ACTIVE -ne $TARGET_SESSION) {
-	jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-	Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
-	Write-Host "⚠ Previous session paused: $(Split-Path -Leaf $PREV_ACTIVE)"
+try {
+	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+
+	# Pause previous active session if different
+	$PREV_ACTIVE = Get-Content $ACTIVE_FILE -ErrorAction SilentlyContinue
+	if ($PREV_ACTIVE -and $PREV_ACTIVE -ne $TARGET_SESSION) {
+		$prevSession = $registry.sessions | Where-Object { $_.path -eq $PREV_ACTIVE }
+		if ($prevSession) {
+			$prevSession.status = "paused"
+			$prevSession.lastActive = $CURRENT_DATETIME
+			Write-Host "⚠ Previous session paused: $(Split-Path -Leaf $PREV_ACTIVE)"
+		}
+	}
+
+	# Mark target as in-progress
+	$targetSession = $registry.sessions | Where-Object { $_.path -eq $TARGET_SESSION }
+	if ($targetSession) {
+		$targetSession.status = "in-progress"
+		$targetSession.lastActive = $CURRENT_DATETIME
+	} else {
+		Write-Error "Session not found: $TARGET_SESSION"
+		exit 1
+	}
+
+	# Save registry
+	$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+
+	# Update active pointer
+	$TARGET_SESSION | Set-Content $ACTIVE_FILE
+} catch {
+	Write-Error "Failed to update registry: $_"
+	exit 1
 }
-
-# Mark target as in-progress
-jq --arg path "$TARGET_SESSION" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = "in-progress" | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
-
-# Update active pointer
-$TARGET_SESSION | Set-Content $ACTIVE_FILE
 ```
 
 ## Step 5: Display Session Context

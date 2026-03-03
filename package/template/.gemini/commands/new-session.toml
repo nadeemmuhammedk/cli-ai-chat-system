@@ -9,11 +9,6 @@ Create a new session folder for organizing this AI chat conversation.
 
 Run the following PowerShell check:
 ```powershell
-if (!(Get-Command jq -ErrorAction SilentlyContinue)) {
-	Write-Error "ERROR: jq is not installed"
-	Write-Host "Install with: choco install jq (Windows) or brew install jq (Mac/Linux)"
-	exit 1
-}
 if (!(Test-Path "_templates/session/context-template.md") -or
 	!(Test-Path "_templates/session/messages-template.md") -or
 	!(Test-Path "_templates/session/decisions-template.md")) {
@@ -92,27 +87,46 @@ Copy-AndReplace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.m
 if (!(Test-Path ".cli-ai-chat")) { New-Item -ItemType Directory ".cli-ai-chat" | Out-Null }
 if (!(Test-Path $REGISTRY_FILE)) { '{"sessions": []}' | Set-Content $REGISTRY_FILE }
 
+# Load registry
+try {
+	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+} catch {
+	Write-Error "Failed to read registry: $_"
+	exit 1
+}
+
 # Pause previous active session if exists
 if (Test-Path $ACTIVE_FILE) {
 	$PREV_ACTIVE = Get-Content $ACTIVE_FILE
 	if ($PREV_ACTIVE) {
-		jq --arg path "$PREV_ACTIVE" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = "paused" | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-		Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
-		Write-Host "Previous session paused: $PREV_ACTIVE"
+		$prevSession = $registry.sessions | Where-Object { $_.path -eq $PREV_ACTIVE }
+		if ($prevSession) {
+			$prevSession.status = "paused"
+			$prevSession.lastActive = $CURRENT_DATETIME
+			Write-Host "Previous session paused: $PREV_ACTIVE"
+		}
 	}
 }
 
 # Add new session to registry
-jq --arg path "$SESSION_PATH" --arg topic "$SESSION_TOPIC" --arg project "$PROJECT_DISPLAY" --arg created "$CURRENT_DATETIME" '.sessions += [{
-	"path": $path,
-	"topic": $topic,
-	"project": $project,
-	"status": "in-progress",
-	"platform": "gemini",
-	"created": $created,
-	"lastActive": $created
-}]' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
+$newSession = [PSCustomObject]@{
+	path = $SESSION_PATH
+	topic = $SESSION_TOPIC
+	project = $PROJECT_DISPLAY
+	status = "in-progress"
+	platform = "gemini"
+	created = $CURRENT_DATETIME
+	lastActive = $CURRENT_DATETIME
+}
+$registry.sessions += $newSession
+
+# Save registry
+try {
+	$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+} catch {
+	Write-Error "Failed to save registry: $_"
+	exit 1
+}
 
 # Set active pointer
 $SESSION_PATH | Set-Content $ACTIVE_FILE

@@ -132,15 +132,28 @@ for ($i = 0; $i -lt $contextLines.Count; $i++) {
 $newLines -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $CONTEXT_FILE
 
 # Update registry
-jq --arg path "$SESSION_PATH" --arg status "$FINAL_STATUS" --arg time "$CURRENT_DATETIME" '.sessions |= map(if .path == $path then .status = $status | .lastActive = $time else . end)' $REGISTRY_FILE | Out-File -FilePath "$REGISTRY_FILE.tmp" -Encoding ascii
-Move-Item -Force "$REGISTRY_FILE.tmp" $REGISTRY_FILE
+try {
+	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+	$session = $registry.sessions | Where-Object { $_.path -eq $SESSION_PATH }
+	if ($session) {
+		$session.status = $FINAL_STATUS
+		$session.lastActive = $CURRENT_DATETIME
+		$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+	} else {
+		Write-Error "Session not found: $SESSION_PATH"
+		exit 1
+	}
+} catch {
+	Write-Error "Failed to update registry: $_"
+	exit 1
+}
 
 # Clear active pointer
 Remove-Item $ACTIVE_FILE -Force -ErrorAction SilentlyContinue
 
 # Display summary
 $SESSION_TOPIC = (Split-Path -Leaf $SESSION_PATH) -replace '^\d{4}-\d{2}-\d{2}-', ''
-$PROJECT_NAME = jq -r --arg path "$SESSION_PATH" '.sessions[] | select(.path == $path) | .project' $REGISTRY_FILE
+$PROJECT_NAME = ($registry.sessions | Where-Object { $_.path -eq $SESSION_PATH }).project
 
 Write-Host ""
 Write-Host "✓ Session finalized: $FINAL_STATUS"
