@@ -110,7 +110,6 @@ CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 CHECKPOINT_NUMBER="[increment-from-messages.md-count]"
 WORK_SUMMARY="[validated-summary-from-user]"
 DECISIONS_TO_ADD="[validated-decisions-array]"
-# NOTE: CONTEXT_CHANGED and CONTEXT_UPDATES removed - handled by Edit tool in step 5
 
 # File paths
 MESSAGES_FILE="$SESSION_PATH/messages.md"

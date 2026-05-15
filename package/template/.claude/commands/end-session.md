@@ -126,14 +126,9 @@ $DECISIONS_TO_ADD
 DECISIONS_EOF
 fi
 
-# 4. Update context.md with status using sed (no prior read)
-# First, update the status line using pattern matching
-sed -i "/^## Status/,/^##/ {
-  /^## Status/!{/^##/!d}
-}" "$CONTEXT_FILE" 2>/dev/null
-
-# Insert status after "## Status" header
-sed -i "/^## Status/a $FINAL_STATUS" "$CONTEXT_FILE"
+# 4. Update context.md status value using sed (no prior read)
+# Replace the status value line (the line immediately after "## Status" header)
+sed -i "/^## Status/{n; s/.*/$FINAL_STATUS/;}" "$CONTEXT_FILE"
 
 # 5. If planning mode was used, append planning summary to context.md
 if [ -n "$PLAN_NAME" ]; then
