@@ -10,7 +10,7 @@ If file doesn't exist, tell the user to run /new-session first.
 
 ## Step 2: Check Planning Mode
 
-Look in `[session-path]/planning_mode/` for plan/todo/done files.
+Look in `[session-path]/planning-mode/` for plan/todo/done files.
 If found, planning mode is active.
 
 ## Step 3: Analyze and Generate Checkpoint Content
@@ -130,7 +130,7 @@ Write-Host "✓ Updated: context.md, messages.md, decisions.md"
 Write-Host "✓ Timestamp: $CURRENT_DATETIME"
 
 # Planning mode status
-$PLANNING_DIR = "$SESSION_PATH/planning_mode"
+$PLANNING_DIR = "$SESSION_PATH/planning-mode"
 $PLAN_FILES = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue
 if ($PLAN_FILES) {
 	$TODO_FILE = (Get-ChildItem "$PLANNING_DIR/*-todo.md" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName

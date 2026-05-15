@@ -76,10 +76,10 @@ Please execute the following:
    - Display under a "Context:" heading
 
 6. **Check for active planning mode:**
-   - Look in `[session-path]/planning_mode/` for `*-plan.md` files using Glob
+   - Look in `[session-path]/planning-mode/` for `*-plan.md` files using Glob
    - If planning files exist, use bash to count tasks:
    ```bash
-   PLANNING_DIR="[session-path]/planning_mode"
+   PLANNING_DIR="[session-path]/planning-mode"
    PLAN_FILE=$(ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | head -1)
    PLAN_NAME=$(basename "$PLAN_FILE" | sed 's/^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-//' | sed 's/-plan\.md$//')
    TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)

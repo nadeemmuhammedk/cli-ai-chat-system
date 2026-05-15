@@ -35,7 +35,7 @@ if [ ! -d "$SESSION_PATH" ]; then
   exit 1
 fi
 
-PLANNING_DIR="$SESSION_PATH/planning_mode"
+PLANNING_DIR="$SESSION_PATH/planning-mode"
 mkdir -p "$PLANNING_DIR"
 
 # Archive existing planning files if present
@@ -171,9 +171,9 @@ sed -i "s/DATETIME_PLACEHOLDER/$CURRENT_DATETIME/g" "$DONE_FILE"
 echo "✓ Planning mode activated: $PLAN_NAME"
 echo ""
 echo "Files created:"
-echo "  - planning_mode/$CURRENT_DATE-$PLAN_NAME-plan.md"
-echo "  - planning_mode/$CURRENT_DATE-$PLAN_NAME-todo.md"
-echo "  - planning_mode/$CURRENT_DATE-$PLAN_NAME-done.md"
+echo "  - planning-mode/$CURRENT_DATE-$PLAN_NAME-plan.md"
+echo "  - planning-mode/$CURRENT_DATE-$PLAN_NAME-todo.md"
+echo "  - planning-mode/$CURRENT_DATE-$PLAN_NAME-done.md"
 echo ""
 echo "Next steps:"
 echo "  1. Fill in the plan.md with your goals, approach, and phases"

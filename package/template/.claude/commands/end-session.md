@@ -11,7 +11,7 @@ Please execute the following:
    - If file doesn't exist, inform the user there's no active session to end
 
 2. **Check for planning mode files:**
-   - Look in `[session-path]/planning_mode/` for active plan/todo/done files
+   - Look in `[session-path]/planning-mode/` for active plan/todo/done files
    - If found, planning mode was used during this session
 
 3. **Perform final checkpoint with AI-generated content:**
@@ -81,7 +81,7 @@ CONTEXT_FILE="$SESSION_PATH/context.md"
 TODO_COUNT=0
 DONE_COUNT=0
 PLAN_NAME=""
-PLANNING_DIR="$SESSION_PATH/planning_mode"
+PLANNING_DIR="$SESSION_PATH/planning-mode"
 if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
   PLAN_FILE=$(ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | head -1)
   if [ -n "$PLAN_FILE" ]; then

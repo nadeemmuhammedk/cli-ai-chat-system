@@ -32,10 +32,10 @@ chats/
 │   └── [project-name]/
 │       └── YYYY-MM-DD-[topic]/
 │           ├── artifacts/          # Generated outputs
-│           ├── core_files/         # Reference materials (explicit only)
-│           ├── core_instructions/  # Rules to follow (explicit only)
-│           ├── uploaded_files/     # User-provided inputs
-│           ├── planning_mode/      # Multi-phase work tracking
+│           ├── core-files/         # Reference materials (explicit only)
+│           ├── core-instructions/  # Rules to follow (explicit only)
+│           ├── uploaded-files/     # User-provided inputs
+│           ├── planning-mode/      # Multi-phase work tracking
 │           │   ├── archive/
 │           │   ├── YYYY-MM-DD-name-plan.md
 │           │   ├── YYYY-MM-DD-name-todo.md
@@ -61,7 +61,7 @@ chats/
 - Sessions started in Claude can be continued in Gemini or Codex and vice versa
 
 ### Explicit Folder Population
-- `core_files/`, `core_instructions/`, `uploaded_files/` created empty
+- `core-files/`, `core-instructions/`, `uploaded-files/` created empty
 - Only populated when user explicitly instructs
 - Planning mode activated only via `/start-plan` command
 
@@ -103,7 +103,7 @@ Activated only when user runs `/start-plan [name]`:
 - Alerts user if work deviates from the documented plan
 
 ### Core Instructions
-If `core_instructions/` contains files:
+If `core-instructions/` contains files:
 - Check them before major decisions
 - Warn user if a request conflicts with instructions
 - Never deviate without explicit user permission
@@ -116,10 +116,10 @@ If `core_instructions/` contains files:
 | `messages.md` | What was discussed (chronological summary) |
 | `decisions.md` | Why choices were made (decision rationale tree) |
 | `artifacts/` | Generated work products |
-| `core_files/` | Authoritative references to follow |
-| `core_instructions/` | Irrefutable rules and standards |
-| `uploaded_files/` | User-provided input files for analysis |
-| `planning_mode/` | Tactical plan and progress tracking |
+| `core-files/` | Authoritative references to follow |
+| `core-instructions/` | Irrefutable rules and standards |
+| `uploaded-files/` | User-provided input files for analysis |
+| `planning-mode/` | Tactical plan and progress tracking |
 
 ## Common Workflows
 
@@ -167,9 +167,12 @@ Always update `.cli-ai-chat/sessions.json` when:
 - Timestamps in files: ISO-8601 format (`2025-01-20T14:30:00Z`)
 - Planning files: `YYYY-MM-DD-name-{plan,todo,done}.md`
 
+### Artifact Naming
+- Artifact files use snake_case: `descriptive_name.md` (e.g. `analysis_report.md`, `findings_summary.md`)
+
 ## Critical Rules
 - Never create planning files automatically (only via `/start-plan`)
-- Never populate `core_files/` or `core_instructions/` proactively
+- Never populate `core-files/` or `core-instructions/` proactively
 - Always mark previous session as paused when creating a new session
 - Always use `.cli-ai-chat/active-session.txt` for session tracking
 - Update session registry on every status change

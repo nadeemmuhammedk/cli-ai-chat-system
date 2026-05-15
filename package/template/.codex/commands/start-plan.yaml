@@ -30,7 +30,7 @@ prompt: |
   ## Step 3: Archive Existing Planning Files (if any)
 
   ```powershell
-  $PLANNING_DIR = "$SESSION_PATH/planning_mode"
+  $PLANNING_DIR = "$SESSION_PATH/planning-mode"
   $TIMESTAMP = (Get-Date).ToString("yyyy-MM-dd-HHmm")
   New-Item -ItemType Directory -Force -Path $PLANNING_DIR | Out-Null
 
@@ -54,7 +54,7 @@ prompt: |
   $PLAN_NAME = "[validated-plan-name]"
   $CURRENT_DATE = (Get-Date).ToString("yyyy-MM-dd")
   $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-  $PLANNING_DIR = "$SESSION_PATH/planning_mode"
+  $PLANNING_DIR = "$SESSION_PATH/planning-mode"
 
   # plan.md
   $PLAN_FILE = "$PLANNING_DIR/$CURRENT_DATE-$PLAN_NAME-plan.md"
@@ -154,7 +154,7 @@ prompt: |
   ```
   ✓ Planning mode activated: [plan-name]
 
-  Files created in planning_mode/:
+  Files created in planning-mode/:
     - [date]-[name]-plan.md
     - [date]-[name]-todo.md
     - [date]-[name]-done.md

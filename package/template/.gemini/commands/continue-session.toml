@@ -92,7 +92,7 @@ Read `[session-path]/context.md` and show it fully under a "Context:" heading.
 ## Step 6: Check Planning Mode
 
 ```powershell
-$PLANNING_DIR = "[session-path]/planning_mode"
+$PLANNING_DIR = "[session-path]/planning-mode"
 $PLAN_FILE = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($PLAN_FILE) {
 	$PLAN_NAME = (Split-Path -Leaf $PLAN_FILE) -replace '^\d{4}-\d{2}-\d{2}-', '' -replace '-plan\.md$', ''

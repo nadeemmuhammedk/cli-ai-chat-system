@@ -65,7 +65,7 @@ prompt: |
   $ACTIVE_FILE = ".cli-ai-chat/active-session.txt"
 
   # Create folder structure
-  $dirs = "artifacts", "core_files", "core_instructions", "uploaded_files", "planning_mode/archive"
+  $dirs = "artifacts", "core-files", "core-instructions", "uploaded-files", "planning-mode/archive"
   foreach ($dir in $dirs) {
   	New-Item -ItemType Directory -Force -Path "$SESSION_PATH/$dir" | Out-Null
   }

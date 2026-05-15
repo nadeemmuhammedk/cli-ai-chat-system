@@ -49,9 +49,9 @@ Creates: `chats/unnamed_projects/2025-01-20-quick-debugging/`
 The AI will save generated files to `artifacts/` automatically.
 
 Use explicit folders when instructed:
-- `core_files/` — reference documents for the AI to follow
-- `core_instructions/` — rules the AI must adhere to
-- `uploaded_files/` — files you provide as input
+- `core-files/` — reference documents for the AI to follow
+- `core-instructions/` — rules the AI must adhere to
+- `uploaded-files/` — files you provide as input
 
 ### 3. Save a Checkpoint
 
@@ -111,7 +111,7 @@ For complex, multi-phase work:
 /start-plan database-migration
 ```
 
-Creates three files in `planning_mode/`:
+Creates three files in `planning-mode/`:
 - `2025-01-20-database-migration-plan.md` — fill in goals, phases, approach
 - `2025-01-20-database-migration-todo.md` — tasks organized by phase
 - `2025-01-20-database-migration-done.md` — completed tasks log
@@ -126,7 +126,7 @@ Once activated, the AI automatically:
 
 ### Starting a New Planning Cycle
 
-Running `/start-plan` again archives the current planning files to `planning_mode/archive/` and creates fresh ones.
+Running `/start-plan` again archives the current planning files to `planning-mode/archive/` and creates fresh ones.
 
 ---
 

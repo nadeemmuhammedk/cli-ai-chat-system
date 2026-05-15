@@ -38,10 +38,10 @@ chats/
 │   └── [project-name]/
 │       └── YYYY-MM-DD-[topic]/
 │           ├── artifacts/
-│           ├── core_files/
-│           ├── core_instructions/
-│           ├── uploaded_files/
-│           ├── planning_mode/
+│           ├── core-files/
+│           ├── core-instructions/
+│           ├── uploaded-files/
+│           ├── planning-mode/
 │           │   ├── archive/
 │           │   ├── YYYY-MM-DD-name-plan.md
 │           │   ├── YYYY-MM-DD-name-todo.md
@@ -123,7 +123,7 @@ in-progress → abandoned   (when /end-session with "Abandoned")
 
 ## Planning Mode
 
-Activated by `/start-plan [name]`. Creates three files in `planning_mode/`:
+Activated by `/start-plan [name]`. Creates three files in `planning-mode/`:
 
 | File | Purpose |
 |------|---------|
@@ -138,7 +138,7 @@ Activated by `/start-plan [name]`. Creates three files in `planning_mode/`:
 - AI alerts user if work deviates from the plan
 - `/checkpoint` includes a planning status check
 
-**Starting a new planning cycle** archives existing planning files to `planning_mode/archive/`.
+**Starting a new planning cycle** archives existing planning files to `planning-mode/archive/`.
 
 ## Cross-Platform Session Continuity
 

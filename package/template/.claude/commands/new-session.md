@@ -128,7 +128,7 @@ ACTIVE_FILE=".cli-ai-chat/active-session.txt"
 echo "Creating session structure..."
 
 # 1. Create all directories in a single command using brace expansion
-mkdir -p "$SESSION_DIR"/{artifacts,core_files,core_instructions,uploaded_files,planning_mode/archive}
+mkdir -p "$SESSION_DIR"/{artifacts,core-files,core-instructions,uploaded-files,planning-mode/archive}
 
 # 2. Copy and replace placeholders in template files
 copy_and_replace() {

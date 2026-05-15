@@ -11,7 +11,7 @@ Please execute the following:
    - If file doesn't exist, inform the user to create a session with `/new-session` first
 
 2. **Check for planning mode files:**
-   - Look in `[session-path]/planning_mode/` for active plan/todo/done files
+   - Look in `[session-path]/planning-mode/` for active plan/todo/done files
    - If found, planning mode is active
 
 3. **Analyze conversation and generate checkpoint content:**
@@ -166,7 +166,7 @@ echo "✓ Updated: context.md, messages.md, decisions.md"
 echo "✓ Timestamp: $CURRENT_DATETIME"
 
 # 6. Check planning mode status (if active)
-PLANNING_DIR="$SESSION_PATH/planning_mode"
+PLANNING_DIR="$SESSION_PATH/planning-mode"
 if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
   # Planning mode is active
   TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)

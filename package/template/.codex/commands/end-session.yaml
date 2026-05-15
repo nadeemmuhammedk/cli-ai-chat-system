@@ -10,7 +10,7 @@ prompt: |
 
   ## Step 2: Check Planning Mode
 
-  Look in `[session-path]/planning_mode/` for plan/todo/done files.
+  Look in `[session-path]/planning-mode/` for plan/todo/done files.
 
   ## Step 3: Final Checkpoint
 
@@ -41,7 +41,7 @@ prompt: |
 
   First run this to check planning status:
   ```powershell
-  $PLANNING_DIR = "[session-path]/planning_mode"
+  $PLANNING_DIR = "[session-path]/planning-mode"
   $PLAN_FILES = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue
   if ($PLAN_FILES) {
   	$PLAN_FILE = $PLAN_FILES[0]
