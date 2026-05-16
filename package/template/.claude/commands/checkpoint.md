@@ -89,6 +89,8 @@ Please execute the following:
         - Reference to artifacts with file sizes if applicable
 
    c. **Use Edit tool** to replace the outdated sections:
+      - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
+      - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any shell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
       - Replace entire "## Current Focus" paragraph with new validated content
       - Replace entire "## Key Points" bullet list with new validated content
       - Do NOT update timestamp yet (bash script handles this)

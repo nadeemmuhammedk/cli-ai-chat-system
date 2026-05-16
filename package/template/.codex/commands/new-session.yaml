@@ -70,18 +70,26 @@ prompt: |
   	New-Item -ItemType Directory -Force -Path "$SESSION_PATH/$dir" | Out-Null
   }
 
-  function Copy-AndReplace($src, $dest) {
-  	Copy-Item $src $dest
-  	(Get-Content $dest) `
-  		-replace '\[SESSION_TOPIC\]', $SESSION_TOPIC `
-  		-replace '\[PROJECT_NAME\]', $PROJECT_DISPLAY `
-  		-replace '\[CURRENT_DATETIME\]', $CURRENT_DATETIME `
-  		-replace '\[DATETIME\]', $CURRENT_DATETIME | Set-Content $dest
-  }
+  Copy-Item "$TEMPLATE_DIR/context-template.md" "$SESSION_PATH/context.md"
+  (Get-Content "$SESSION_PATH/context.md") `
+  	-replace '\[SESSION_TOPIC\]', $SESSION_TOPIC `
+  	-replace '\[PROJECT_NAME\]', $PROJECT_DISPLAY `
+  	-replace '\[CURRENT_DATETIME\]', $CURRENT_DATETIME `
+  	-replace '\[DATETIME\]', $CURRENT_DATETIME | Set-Content "$SESSION_PATH/context.md"
 
-  Copy-AndReplace "$TEMPLATE_DIR/context-template.md" "$SESSION_PATH/context.md"
-  Copy-AndReplace "$TEMPLATE_DIR/messages-template.md" "$SESSION_PATH/messages.md"
-  Copy-AndReplace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.md"
+  Copy-Item "$TEMPLATE_DIR/messages-template.md" "$SESSION_PATH/messages.md"
+  (Get-Content "$SESSION_PATH/messages.md") `
+  	-replace '\[SESSION_TOPIC\]', $SESSION_TOPIC `
+  	-replace '\[PROJECT_NAME\]', $PROJECT_DISPLAY `
+  	-replace '\[CURRENT_DATETIME\]', $CURRENT_DATETIME `
+  	-replace '\[DATETIME\]', $CURRENT_DATETIME | Set-Content "$SESSION_PATH/messages.md"
+
+  Copy-Item "$TEMPLATE_DIR/decisions-template.md" "$SESSION_PATH/decisions.md"
+  (Get-Content "$SESSION_PATH/decisions.md") `
+  	-replace '\[SESSION_TOPIC\]', $SESSION_TOPIC `
+  	-replace '\[PROJECT_NAME\]', $PROJECT_DISPLAY `
+  	-replace '\[CURRENT_DATETIME\]', $CURRENT_DATETIME `
+  	-replace '\[DATETIME\]', $CURRENT_DATETIME | Set-Content "$SESSION_PATH/decisions.md"
 
   # Initialize registry if needed
   if (!(Test-Path ".cli-ai-chat")) { New-Item -ItemType Directory ".cli-ai-chat" | Out-Null }

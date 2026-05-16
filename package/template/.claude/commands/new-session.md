@@ -131,20 +131,23 @@ echo "Creating session structure..."
 mkdir -p "$SESSION_DIR"/{artifacts,core-files,core-instructions,uploaded-files,planning-mode/archive}
 
 # 2. Copy and replace placeholders in template files
-copy_and_replace() {
-  local src="$1"
-  local dest="$2"
+cp "$TEMPLATE_DIR/context-template.md" "$SESSION_DIR/context.md"
+sed -i "s/\[SESSION_TOPIC\]/$SESSION_TOPIC/g" "$SESSION_DIR/context.md"
+sed -i "s/\[PROJECT_NAME\]/$PROJECT_DISPLAY/g" "$SESSION_DIR/context.md"
+sed -i "s/\[CURRENT_DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/context.md"
+sed -i "s/\[DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/context.md"
 
-  cp "$src" "$dest"
-  sed -i "s/\\[SESSION_TOPIC\\]/$SESSION_TOPIC/g" "$dest"
-  sed -i "s/\\[PROJECT_NAME\\]/$PROJECT_DISPLAY/g" "$dest"
-  sed -i "s/\\[CURRENT_DATETIME\\]/$CURRENT_DATETIME/g" "$dest"
-  sed -i "s/\\[DATETIME\\]/$CURRENT_DATETIME/g" "$dest"
-}
+cp "$TEMPLATE_DIR/messages-template.md" "$SESSION_DIR/messages.md"
+sed -i "s/\[SESSION_TOPIC\]/$SESSION_TOPIC/g" "$SESSION_DIR/messages.md"
+sed -i "s/\[PROJECT_NAME\]/$PROJECT_DISPLAY/g" "$SESSION_DIR/messages.md"
+sed -i "s/\[CURRENT_DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/messages.md"
+sed -i "s/\[DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/messages.md"
 
-copy_and_replace "$TEMPLATE_DIR/context-template.md" "$SESSION_DIR/context.md"
-copy_and_replace "$TEMPLATE_DIR/messages-template.md" "$SESSION_DIR/messages.md"
-copy_and_replace "$TEMPLATE_DIR/decisions-template.md" "$SESSION_DIR/decisions.md"
+cp "$TEMPLATE_DIR/decisions-template.md" "$SESSION_DIR/decisions.md"
+sed -i "s/\[SESSION_TOPIC\]/$SESSION_TOPIC/g" "$SESSION_DIR/decisions.md"
+sed -i "s/\[PROJECT_NAME\]/$PROJECT_DISPLAY/g" "$SESSION_DIR/decisions.md"
+sed -i "s/\[CURRENT_DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/decisions.md"
+sed -i "s/\[DATETIME\]/$CURRENT_DATETIME/g" "$SESSION_DIR/decisions.md"
 
 echo "Session files created: $SESSION_DIR"
 

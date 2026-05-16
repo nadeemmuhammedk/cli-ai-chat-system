@@ -68,6 +68,8 @@ prompt: |
   Read current context.md, then use Edit tool to replace:
   - "## Current Focus" section with new validated content
   - "## Key Points" bullet list with updated points
+  - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
+  - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any PowerShell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
 
   Skip if no context changes (most checkpoints).
 
