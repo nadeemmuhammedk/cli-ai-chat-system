@@ -83,9 +83,22 @@ prompt: |
 
   After receiving user input, map: 1=completed, 2=paused, 3=abandoned
 
-  ## Step 6: Finalize with PowerShell Script
+  ## Step 6: Update context.md Content
 
-  ONLY after gathering all user input above, execute:
+  CRITICAL: Complete this step BEFORE running the PowerShell script in Step 7.
+
+  a. Using the validated session summary from Step 3, generate:
+     - New "Current Focus" text: one sentence describing what the session produced
+     - New "Key Points" bullet list covering work completed, artifacts created, key decisions, tools/brands used
+
+  b. Use the Edit tool to replace the "## Current Focus" paragraph and "## Key Points" bullet list in context.md:
+     - Use the ACTUAL resolved file path from active-session.txt
+     - Do NOT use $CONTEXT_FILE or any shell variable as the file path — the Edit tool does not evaluate shell syntax
+     - Do NOT update the timestamp or status yet (PowerShell script handles those)
+
+  ## Step 7: Finalize with PowerShell Script
+
+  ONLY after gathering all user input above and completing Step 6, execute:
   - $FINAL_STATUS = user's selection from Step 5
   - $FINAL_SUMMARY = validated content from Step 3
   - $DECISIONS_TO_ADD = any decisions from Step 3
@@ -103,10 +116,13 @@ prompt: |
   $DECISIONS_FILE = "$SESSION_PATH/decisions.md"
   $CONTEXT_FILE = "$SESSION_PATH/context.md"
 
-  # Append final summary to messages.md
+  # Append final exchange to messages.md
+  $EXCHANGE_COUNT = (Select-String -Pattern "^### Exchange" -Path $MESSAGES_FILE -ErrorAction SilentlyContinue).Count
+  if (-not $EXCHANGE_COUNT) { $EXCHANGE_COUNT = 0 }
+  $NEXT_EXCHANGE_NUMBER = $EXCHANGE_COUNT + 1
   Add-Content -Path $MESSAGES_FILE -Value @"
 
-  ### Final Summary
+  ### Exchange $NEXT_EXCHANGE_NUMBER
   **User:** Ending session
   **Assistant:** $FINAL_SUMMARY
   **Outcome:** Session finalized with status: $FINAL_STATUS

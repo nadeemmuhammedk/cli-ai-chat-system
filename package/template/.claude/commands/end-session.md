@@ -56,9 +56,31 @@ Please execute the following:
      - "Abandoned" - Work discontinued, will not continue
    - multiSelect: false
 
-6. **Finalize session with bash script:**
+6. **Update context.md content using Edit tool BEFORE running bash script:**
 
-After user validates all content and selects final status, execute the following bash script:
+   **CRITICAL**: This step must be completed BEFORE step 7 (bash script execution).
+
+   a. **Read current context.md** to see existing "Current Focus" and "Key Points" sections
+
+   b. **Using the validated session summary from step 3**, generate:
+      - New "Current Focus" text: one sentence describing what the session produced
+      - New "Key Points" bullet list covering:
+        - Work completed and artifacts created
+        - Key design or technical decisions made
+        - Tools, brands, or external resources used
+        - Any important constraints or scope notes
+
+   c. **Use Edit tool** to replace the placeholder/outdated sections:
+      - Use the ACTUAL resolved file path from `active-session.txt`
+      - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any shell variable as the file path
+      - Replace entire "## Current Focus" paragraph with new content
+      - Replace entire "## Key Points" bullet list with new content
+      - Do NOT update timestamp or status yet (bash script handles those)
+      - Verify edit was successful before proceeding
+
+7. **Finalize session with bash script:**
+
+After user validates all content, selects final status, and context.md content is updated, execute the following bash script:
 
 ```bash
 #!/bin/bash
@@ -108,10 +130,12 @@ if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
   fi
 fi
 
-# 2. Append final checkpoint to messages.md (no prior read)
+# 2. Append final exchange to messages.md
+EXCHANGE_COUNT=$(grep -c "^### Exchange" "$MESSAGES_FILE" 2>/dev/null || echo 0)
+NEXT_EXCHANGE_NUMBER=$((EXCHANGE_COUNT + 1))
 cat >> "$MESSAGES_FILE" <<MESSAGES_EOF
 
-### Final Summary
+### Exchange $NEXT_EXCHANGE_NUMBER
 **User:** Ending session
 **Assistant:** $FINAL_SUMMARY
 **Outcome:** Session finalized with status: $FINAL_STATUS
@@ -191,6 +215,7 @@ echo "The session folder is now complete and can be referenced later."
 ```
 
 **Before running the bash script:**
+- Confirm context.md "Current Focus" and "Key Points" were updated in step 6
 - Append validated final summary to messages.md
 - Format any remaining decisions as proper markdown
 - Get user's final status selection (completed/paused/abandoned)
