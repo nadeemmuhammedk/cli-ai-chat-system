@@ -76,7 +76,7 @@ Skip if no context changes (most checkpoints).
 ## Step 6: Run PowerShell Script
 
 ```powershell
-$SESSION_PATH = "[session-path]"
+$SESSION_PATH = (Get-Content .cli-ai-chat/active-session.txt -Raw).Trim()
 $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $CHECKPOINT_NUMBER = "[count-from-messages.md]"
 $WORK_SUMMARY = "[validated-summary]"

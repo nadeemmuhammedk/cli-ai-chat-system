@@ -107,7 +107,7 @@ After user validates checkpoint content, execute the following bash script:
 #!/bin/bash
 
 # Variables from validated AI content
-SESSION_PATH="[session-path-from-step-1]"
+SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
 CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 CHECKPOINT_NUMBER="[increment-from-messages.md-count]"
 WORK_SUMMARY="[validated-summary-from-user]"
