@@ -1,6 +1,6 @@
 {
 	"name": "cli-ai-chat-system",
-	"version": "1.0.08",
+	"version": "1.0.09",
 	"description": "Unified AI chat session management system for Claude, Gemini, and Codex CLI tools",
 	"bin": {
 		"cli-ai-chat-system": "./bin/cli-ai-chat-system.js"

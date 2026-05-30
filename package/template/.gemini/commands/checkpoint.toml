@@ -65,13 +65,21 @@ Handle responses:
 
 CRITICAL: Do this BEFORE the PowerShell script.
 
-Read current context.md, then use Edit tool to replace:
+Read current context.md first. Then determine if an update is needed — trigger
+the Edit tool if EITHER condition is true:
+- User validated a context change in Step 3 (scope shift, new capability, etc.), OR
+- The "Current Focus" section still contains the placeholder text
+  `[To be filled during conversation]` — this is the first checkpoint and the
+  file was never initialized. Always populate it, even if no explicit context
+  change was detected.
+
+When updating, use the Edit tool to replace:
 - "## Current Focus" section with new validated content
 - "## Key Points" bullet list with updated points
 - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
 - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any PowerShell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
 
-Skip if no context changes (most checkpoints).
+Skip only if context.md is already populated AND no context changes were detected.
 
 ## Step 6: Run PowerShell Script
 

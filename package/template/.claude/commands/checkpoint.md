@@ -80,7 +80,11 @@ Please execute the following:
 
    a. **Read current context.md** to see existing "Current Focus" and "Key Points" sections
 
-   b. **If user validated context changes in step 3** (context evolution detected):
+   b. **Determine if context.md needs updating** — trigger the Edit tool if EITHER condition is true:
+      - User validated a context change in step 3 (scope shift, new capability, etc.), OR
+      - The "Current Focus" section still contains the placeholder text `[To be filled during conversation]` — this means it's the first checkpoint and the file was never initialized. **Always populate it**, even if no explicit context change was detected.
+
+   c. **When updating**, generate content from the validated checkpoint summary:
       - Generate new "Current Focus" text based on validated checkpoint content
       - Generate new "Key Points" bullet list reflecting:
         - Work completed and artifacts created
@@ -88,7 +92,7 @@ Please execute the following:
         - New capabilities or scope changes
         - Reference to artifacts with file sizes if applicable
 
-   c. **Use Edit tool** to replace the outdated sections:
+   d. **Use Edit tool** to replace the outdated sections:
       - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
       - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any shell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
       - Replace entire "## Current Focus" paragraph with new validated content
@@ -96,7 +100,7 @@ Please execute the following:
       - Do NOT update timestamp yet (bash script handles this)
       - Verify edit was successful before proceeding
 
-   d. **If no context changes** (most checkpoints ~80%):
+   e. **If neither condition in step 5b applies** (context already populated, no new changes):
       - Skip Edit tool - bash script will only update timestamp
 
 6. **Update session files with validated content using bash:**
