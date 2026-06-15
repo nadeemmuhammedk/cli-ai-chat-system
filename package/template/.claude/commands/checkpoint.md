@@ -105,79 +105,76 @@ Please execute the following:
 
 6. **Update session files with validated content using bash:**
 
-After user validates checkpoint content, execute the following bash script:
+After user validates checkpoint content, execute the following bash script.
+
+**IMPORTANT:** Each block re-reads `SESSION_PATH` from `active-session.txt` independently. This means blocks are safe to run in separate Bash tool calls — no variable state is assumed to persist between calls. Always run content appends (`cat >>`) before timestamp updates (`sed`) within each block.
 
 ```bash
 #!/bin/bash
 
-# Variables from validated AI content
+# --- Block 1: Messages ---
+# Re-read path and time fresh — safe if run as a separate call
 SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
 CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-CHECKPOINT_NUMBER="[increment-from-messages.md-count]"
-WORK_SUMMARY="[validated-summary-from-user]"
-DECISIONS_TO_ADD="[validated-decisions-array]"
 
-# File paths
-MESSAGES_FILE="$SESSION_PATH/messages.md"
-DECISIONS_FILE="$SESSION_PATH/decisions.md"
-CONTEXT_FILE="$SESSION_PATH/context.md"
+# Content first (NEVER read first - just append)
+cat >> "${SESSION_PATH}/messages.md" <<MESSAGES_EOF
 
-# 1. Append to messages.md (NEVER read first - just append)
-cat >> "$MESSAGES_FILE" <<MESSAGES_EOF
-
-### Exchange $CHECKPOINT_NUMBER
+### Exchange [CHECKPOINT_NUMBER]
 **User:** [User activities since last checkpoint]
-**Assistant:** $WORK_SUMMARY
+**Assistant:** [WORK_SUMMARY]
 **Outcome:** [Outcome description - generated from context]
 MESSAGES_EOF
 
-# 2. Update messages.md checkpoint timestamp
-sed -i "s/\\*Last Checkpoint:.*/\\*Last Checkpoint: $CURRENT_DATETIME*/" "$MESSAGES_FILE" 2>/dev/null || \
-  echo "*Last Checkpoint: $CURRENT_DATETIME*" >> "$MESSAGES_FILE"
+# Timestamp after — failure here is harmless, content already written
+sed -i "s/\*Last Checkpoint:.*/\*Last Checkpoint: $CURRENT_DATETIME*/" "${SESSION_PATH}/messages.md" || true
 
-# 3. Append decisions to decisions.md (if any)
-if [ -n "$DECISIONS_TO_ADD" ]; then
-  # Extract current decision count
-  DECISION_COUNT=$(grep -oP 'Decision Count: \K\d+' "$DECISIONS_FILE" 2>/dev/null || echo 0)
+# --- Block 2: Decisions ---
+SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
+CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  # For each decision, append formatted entry
-  # (AI will generate proper markdown format based on validated content)
-  cat >> "$DECISIONS_FILE" <<DECISIONS_EOF
+DECISION_COUNT=$(grep -oP 'Decision Count: \K\d+' "${SESSION_PATH}/decisions.md" 2>/dev/null || echo 0)
+NEW_COUNT=$((DECISION_COUNT + [NUMBER_OF_NEW_DECISIONS]))
 
-$DECISIONS_TO_ADD
+# Content first
+cat >> "${SESSION_PATH}/decisions.md" <<DECISIONS_EOF
+
+[FORMATTED_DECISIONS_CONTENT]
 DECISIONS_EOF
 
-  # Update decision count
-  NEW_COUNT=$((DECISION_COUNT + 1))
-  sed -i "s/Decision Count: [0-9]*/Decision Count: $NEW_COUNT/" "$DECISIONS_FILE" 2>/dev/null
-fi
+# Timestamps after
+sed -i "s/Decision Count: [0-9]*/Decision Count: $NEW_COUNT/" "${SESSION_PATH}/decisions.md" || true
+sed -i "s/\*Decision Count:.*/\*Decision Count: $NEW_COUNT | Last Updated: $CURRENT_DATETIME*/" "${SESSION_PATH}/decisions.md" || true
 
-# Update decisions.md timestamp
-sed -i "s/\\*Decision Count:.*/\\*Decision Count: ${NEW_COUNT:-$DECISION_COUNT} | Last Updated: $CURRENT_DATETIME*/" "$DECISIONS_FILE" 2>/dev/null
+# --- Block 3: Context timestamp ---
+# Content already updated by Edit tool in step 5 — this is timestamp only
+SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
+CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# 4. Update context.md timestamp
-# NOTE: Content updates already handled by Edit tool in step 5 (if context changed)
-# This only updates the timestamp
-sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$CONTEXT_FILE"
+sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "${SESSION_PATH}/context.md" || true
 
-# 5. Update session registry lastActive timestamp
-REGISTRY_FILE=".cli-ai-chat/sessions.json"
+# --- Block 4: Registry ---
+SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
+CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
 jq --arg path "$SESSION_PATH" --arg time "$CURRENT_DATETIME" \
   '.sessions |= map(if .path == $path then .lastActive = $time else . end)' \
-  "$REGISTRY_FILE" > "$REGISTRY_FILE.tmp" && mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+  ".cli-ai-chat/sessions.json" > ".cli-ai-chat/sessions.json.tmp" && \
+  mv ".cli-ai-chat/sessions.json.tmp" ".cli-ai-chat/sessions.json"
 
 echo "✓ Checkpoint saved"
-echo "✓ Updated: context.md, messages.md, decisions.md"
+echo "✓ Updated: messages.md, decisions.md, context.md"
 echo "✓ Timestamp: $CURRENT_DATETIME"
 
-# 6. Check planning mode status (if active)
-PLANNING_DIR="$SESSION_PATH/planning-mode"
+# --- Block 5: Planning mode (if active) ---
+SESSION_PATH=$(cat .cli-ai-chat/active-session.txt | tr -d '[:space:]')
+CURRENT_DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+PLANNING_DIR="${SESSION_PATH}/planning-mode"
+
 if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
-  # Planning mode is active
   TODO_FILE=$(ls "$PLANNING_DIR"/*-todo.md 2>/dev/null | head -1)
   DONE_FILE=$(ls "$PLANNING_DIR"/*-done.md 2>/dev/null | head -1)
 
-  # Count pending and completed tasks using grep
   PENDING_COUNT=$(grep -c "^[0-9]*\. \[ \]" "$TODO_FILE" 2>/dev/null || echo 0)
   COMPLETED_COUNT=$(grep -c "^[0-9]*\. \[x\]" "$DONE_FILE" 2>/dev/null || echo 0)
 
@@ -186,18 +183,16 @@ if ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | grep -q .; then
   echo "  Pending tasks: $PENDING_COUNT"
   echo "  Completed tasks: $COMPLETED_COUNT"
 
-  # Update planning file timestamps
   if [ -f "$TODO_FILE" ]; then
-    sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$TODO_FILE"
+    sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$TODO_FILE" || true
   fi
   if [ -f "$DONE_FILE" ]; then
-    sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$DONE_FILE"
+    sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$DONE_FILE" || true
   fi
 
-  # Update plan.md if user approved changes (determined in step 4c)
   PLAN_FILE=$(ls "$PLANNING_DIR"/*-plan.md 2>/dev/null | head -1)
   if [ -f "$PLAN_FILE" ] && [ "$PLAN_NEEDS_UPDATE" = "true" ]; then
-    sed -i "s/\\*Last Updated:.*/\\*Last Updated: $CURRENT_DATETIME*/" "$PLAN_FILE"
+    sed -i "s/\*Last Updated:.*/\*Last Updated: $CURRENT_DATETIME*/" "$PLAN_FILE" || true
     echo "  ⚠ Plan updated with new direction"
   fi
 fi
@@ -205,16 +200,17 @@ fi
 
 **Before running the bash script:**
 - Extract checkpoint number by counting exchanges in messages.md
-- Format decisions as proper markdown with validated content
-- Generate proper decision entries with context, options, choice, rationale
+- Replace `[CHECKPOINT_NUMBER]`, `[WORK_SUMMARY]`, `[OUTCOME]` with actual validated content
+- Replace `[NUMBER_OF_NEW_DECISIONS]` with the count of decisions being added
+- Replace `[FORMATTED_DECISIONS_CONTENT]` with properly formatted decision markdown
 - Ensure context.md content updates completed in step 5 (if context changed)
 
 **Key Optimizations:**
+- ✅ Each block re-reads `SESSION_PATH` from `active-session.txt` — no cross-call variable dependency
+- ✅ Content appends (`cat >>`) always run before timestamp updates (`sed`) within each block
+- ✅ `|| true` on every `sed` — timestamp failure never aborts the script
 - ✅ Never reads messages.md or decisions.md before appending (uses `cat >>`)
 - ✅ Uses Edit tool for context.md content updates (clear, verifiable changes)
-- ✅ Uses `sed -i` for timestamp-only updates (no file read needed)
-- ✅ Uses `grep -c` for task counting (no file read needed)
-- ✅ Single bash script consolidates all file operations
 - ✅ ~75% token reduction through eliminating redundant Read/Write cycles
 
 **Note:** All artifacts created during conversation should already be auto-saved to the session's `artifacts/` folder.

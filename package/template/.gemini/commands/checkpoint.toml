@@ -83,77 +83,104 @@ Skip only if context.md is already populated AND no context changes were detecte
 
 ## Step 6: Run PowerShell Script
 
+IMPORTANT: Each block re-reads `$SESSION_PATH` from `active-session.txt` independently.
+This means blocks are safe to run in separate PowerShell tool calls — no variable state
+is assumed to persist between calls. Always run content appends (Add-Content) before
+timestamp replacements (Set-Content) within each block.
+
+Before running, replace placeholders:
+- [CHECKPOINT_NUMBER] with count of exchanges in messages.md
+- [WORK_SUMMARY] with the validated summary
+- [OUTCOME] with the outcome description
+- [NUMBER_OF_NEW_DECISIONS] with count of decisions being added
+- [FORMATTED_DECISIONS_CONTENT] with properly formatted decision markdown
+
 ```powershell
-$SESSION_PATH = (Get-Content .cli-ai-chat/active-session.txt -Raw).Trim()
+# --- Block 1: Messages ---
+$SESSION_PATH = (Get-Content ".cli-ai-chat/active-session.txt" -Raw).Trim()
 $CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-$CHECKPOINT_NUMBER = "[count-from-messages.md]"
-$WORK_SUMMARY = "[validated-summary]"
-$DECISIONS_TO_ADD = "[validated-decisions]"
 
-$MESSAGES_FILE = "$SESSION_PATH/messages.md"
-$DECISIONS_FILE = "$SESSION_PATH/decisions.md"
-$CONTEXT_FILE = "$SESSION_PATH/context.md"
+# Content first
+Add-Content -Path "$SESSION_PATH/messages.md" -Value @"
 
-# Append to messages.md
-Add-Content -Path $MESSAGES_FILE -Value @"
-
-### Exchange $CHECKPOINT_NUMBER
+### Exchange [CHECKPOINT_NUMBER]
 **User:** [User activities since last checkpoint]
-**Assistant:** $WORK_SUMMARY
-**Outcome:** [Outcome description]
+**Assistant:** [WORK_SUMMARY]
+**Outcome:** [OUTCOME]
 "@
 
-# Update messages.md timestamp
-(Get-Content $MESSAGES_FILE) -replace '\*Last Checkpoint:.*', "*Last Checkpoint: $CURRENT_DATETIME*" | Set-Content $MESSAGES_FILE
-
-# Append decisions (if any)
-if ($DECISIONS_TO_ADD) {
-	$DECISION_COUNT = if ((Get-Content $DECISIONS_FILE -Raw) -match 'Decision Count: (\d+)') { $matches[1] } else { 0 }
-	Add-Content -Path $DECISIONS_FILE -Value @"
-
-$DECISIONS_TO_ADD
-"@
-	$NEW_COUNT = [int]$DECISION_COUNT + 1
-	(Get-Content $DECISIONS_FILE) -replace 'Decision Count: \d+', "Decision Count: $NEW_COUNT" | Set-Content $DECISIONS_FILE
-}
-
-(Get-Content $DECISIONS_FILE) -replace '\*Decision Count:.*', "*Decision Count: $NEW_COUNT | Last Updated: $CURRENT_DATETIME*" | Set-Content $DECISIONS_FILE
-
-# Update context.md timestamp only (content handled by Edit tool)
-(Get-Content $CONTEXT_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $CONTEXT_FILE
-
-# Update registry lastActive
-$REGISTRY_FILE = ".cli-ai-chat/sessions.json"
+# Timestamp after — failure here is harmless, content already written
 try {
-	$registry = Get-Content $REGISTRY_FILE -Raw | ConvertFrom-Json
+	(Get-Content "$SESSION_PATH/messages.md") -replace '\*Last Checkpoint:.*', "*Last Checkpoint: $CURRENT_DATETIME*" | Set-Content "$SESSION_PATH/messages.md"
+} catch {}
+
+# --- Block 2: Decisions ---
+$SESSION_PATH = (Get-Content ".cli-ai-chat/active-session.txt" -Raw).Trim()
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+$DECISION_COUNT = if ((Get-Content "$SESSION_PATH/decisions.md" -Raw) -match 'Decision Count: (\d+)') { [int]$matches[1] } else { 0 }
+$NEW_COUNT = $DECISION_COUNT + [NUMBER_OF_NEW_DECISIONS]
+
+# Content first
+Add-Content -Path "$SESSION_PATH/decisions.md" -Value @"
+
+[FORMATTED_DECISIONS_CONTENT]
+"@
+
+# Timestamps after
+try {
+	(Get-Content "$SESSION_PATH/decisions.md") -replace 'Decision Count: \d+', "Decision Count: $NEW_COUNT" | Set-Content "$SESSION_PATH/decisions.md"
+} catch {}
+try {
+	(Get-Content "$SESSION_PATH/decisions.md") -replace '\*Decision Count:.*', "*Decision Count: $NEW_COUNT | Last Updated: $CURRENT_DATETIME*" | Set-Content "$SESSION_PATH/decisions.md"
+} catch {}
+
+# --- Block 3: Context timestamp ---
+# Content already updated by Edit tool in Step 5 — this is timestamp only
+$SESSION_PATH = (Get-Content ".cli-ai-chat/active-session.txt" -Raw).Trim()
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+try {
+	(Get-Content "$SESSION_PATH/context.md") -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content "$SESSION_PATH/context.md"
+} catch {}
+
+# --- Block 4: Registry ---
+$SESSION_PATH = (Get-Content ".cli-ai-chat/active-session.txt" -Raw).Trim()
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+try {
+	$registry = Get-Content ".cli-ai-chat/sessions.json" -Raw | ConvertFrom-Json
 	$session = $registry.sessions | Where-Object { $_.path -eq $SESSION_PATH }
 	if ($session) {
 		$session.lastActive = $CURRENT_DATETIME
-		$registry | ConvertTo-Json -Depth 10 | Set-Content $REGISTRY_FILE
+		$registry | ConvertTo-Json -Depth 10 | Set-Content ".cli-ai-chat/sessions.json"
 	}
 } catch {
 	Write-Error "Failed to update registry timestamp: $_"
 }
 
 Write-Host "✓ Checkpoint saved"
-Write-Host "✓ Updated: context.md, messages.md, decisions.md"
+Write-Host "✓ Updated: messages.md, decisions.md, context.md"
 Write-Host "✓ Timestamp: $CURRENT_DATETIME"
 
-# Planning mode status
+# --- Block 5: Planning mode (if active) ---
+$SESSION_PATH = (Get-Content ".cli-ai-chat/active-session.txt" -Raw).Trim()
+$CURRENT_DATETIME = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $PLANNING_DIR = "$SESSION_PATH/planning-mode"
+
 $PLAN_FILES = Get-ChildItem "$PLANNING_DIR/*-plan.md" -ErrorAction SilentlyContinue
 if ($PLAN_FILES) {
 	$TODO_FILE = (Get-ChildItem "$PLANNING_DIR/*-todo.md" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
 	$DONE_FILE = (Get-ChildItem "$PLANNING_DIR/*-done.md" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-	$PENDING_COUNT = if ($TODO_FILE) { (Select-String -Pattern '^\d+\\. \[ \]' -Path $TODO_FILE).Matches.Count } else { 0 }
-	$COMPLETED_COUNT = if ($DONE_FILE) { (Select-String -Pattern '^\d+\\. \[x\]' -Path $DONE_FILE).Matches.Count } else { 0 }
+	$PENDING_COUNT = if ($TODO_FILE) { (Select-String -Pattern '^\d+\. \[ \]' -Path $TODO_FILE).Matches.Count } else { 0 }
+	$COMPLETED_COUNT = if ($DONE_FILE) { (Select-String -Pattern '^\d+\. \[x\]' -Path $DONE_FILE).Matches.Count } else { 0 }
 	Write-Host ""
 	Write-Host "Planning Mode: Pending=$PENDING_COUNT | Completed=$COMPLETED_COUNT"
 	if ($TODO_FILE) {
-		(Get-Content $TODO_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $TODO_FILE
+		try { (Get-Content $TODO_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $TODO_FILE } catch {}
 	}
 	if ($DONE_FILE) {
-		(Get-Content $DONE_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $DONE_FILE
+		try { (Get-Content $DONE_FILE) -replace '\*Last Updated:.*', "*Last Updated: $CURRENT_DATETIME*" | Set-Content $DONE_FILE } catch {}
 	}
 }
 ```
