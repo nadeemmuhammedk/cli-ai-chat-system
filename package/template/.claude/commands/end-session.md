@@ -60,23 +60,33 @@ Please execute the following:
 
    **CRITICAL**: This step must be completed BEFORE step 7 (bash script execution).
 
-   a. **Read current context.md** to see existing "Current Focus" and "Key Points" sections
+   a. **Read current context.md** to see the existing "Current Focus", "Session Focus", and "Key Points" sections.
 
-   b. **Using the validated session summary from step 3**, generate:
-      - New "Current Focus" text: one sentence describing what the session produced
-      - New "Key Points" bullet list covering:
-        - Work completed and artifacts created
-        - Key design or technical decisions made
-        - Tools, brands, or external resources used
-        - Any important constraints or scope notes
-
-   c. **Use Edit tool** to replace the placeholder/outdated sections:
+   b. **Current Focus** — replace entire paragraph:
+      - Generate one sentence describing the final state of work at session close
+      - Use Edit tool to replace the entire "## Current Focus" paragraph
       - Use the ACTUAL resolved file path from `active-session.txt`
       - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any shell variable as the file path
-      - Replace entire "## Current Focus" paragraph with new content
-      - Replace entire "## Key Points" bullet list with new content
-      - Do NOT update timestamp or status yet (bash script handles those)
-      - Verify edit was successful before proceeding
+
+   c. **Session Focus** — surgical merge:
+      - Read the existing Session Focus text and merge in the session's final outcomes surgically:
+        - Add what the session ultimately produced or achieved
+        - Update any parts that were still provisional/in-progress but are now resolved
+        - Remove anything that turned out not to be relevant
+        - Only do a full replacement if the session took a completely different direction than when it started
+      - Apply using Edit tool with targeted in-place edits
+
+   d. **Key Points** — surgical merge:
+      - Read the existing Key Points bullet list
+      - For each **new point** from the final session window, check against existing bullets:
+        - Overlaps with an existing bullet → update that bullet in-place
+        - Genuinely new → append as a new bullet at the end of the list
+      - For each **existing bullet**, assess against the full session:
+        - Still accurate → keep unchanged
+        - Outdated or contradicted → update in-place or remove
+      - Apply using Edit tool — targeted replacements per bullet, not full-section replacement
+
+   e. Do NOT update timestamp or status yet (bash script handles those).
 
 7. **Finalize session with bash script:**
 

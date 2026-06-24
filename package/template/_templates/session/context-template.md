@@ -3,6 +3,9 @@
 ## Current Focus
 [To be filled during conversation]
 
+## Session Focus
+[To be filled on first checkpoint]
+
 ## Key Points
 -
 

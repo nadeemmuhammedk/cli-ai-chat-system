@@ -61,25 +61,45 @@ prompt: |
   - Deviation selected: document in decisions.md
   - Plan needs updating: update plan.md with new direction
 
-  ## Step 5: Update context.md (if context changed)
+  ## Step 5: Update context.md
 
   CRITICAL: Do this BEFORE the PowerShell script.
 
-  Read current context.md first. Then determine if an update is needed — trigger
-  the Edit tool if EITHER condition is true:
-  - User validated a context change in Step 3 (scope shift, new capability, etc.), OR
-  - The "Current Focus" section still contains the placeholder text
-    `[To be filled during conversation]` — this is the first checkpoint and the
-    file was never initialized. Always populate it, even if no explicit context
-    change was detected.
+  Read current context.md to see the existing "Current Focus", "Session Focus", and "Key Points" sections.
 
-  When updating, use the Edit tool to replace:
-  - "## Current Focus" section with new validated content
-  - "## Key Points" bullet list with updated points
+  Determine what needs updating — use Edit tool for any section where a trigger applies:
+
+  Triggers:
+  - "Current Focus" placeholder `[To be filled during conversation]` still present → first checkpoint, always populate
+  - "Session Focus" placeholder `[To be filled on first checkpoint]` still present → first checkpoint, always populate
+  - User validated a context/scope change in Step 3
+
+  **Current Focus** — always replace entire paragraph:
+  - Generate one paragraph describing what is actively being worked on right now
+  - Use Edit tool to replace the entire "## Current Focus" paragraph
   - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
   - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any PowerShell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
 
-  Skip only if context.md is already populated AND no context changes were detected.
+  **Session Focus** — surgical merge:
+  - First checkpoint (placeholder `[To be filled on first checkpoint]` still present): write 1–2 sentences describing what this session is about at a high level — the overall goal or purpose
+  - Subsequent checkpoints: read the existing Session Focus text, then merge in changes surgically:
+    - Merge new session-level context (new scope additions, evolved goals)
+    - Update stale parts that no longer accurately describe the session
+    - Remove parts that have become irrelevant
+    - Only do a full replacement if the session's entire direction has fundamentally shifted
+  - Apply using Edit tool with targeted in-place edits (not full-section replacement, except on first population or full direction change)
+
+  **Key Points** — surgical merge:
+  - Read the existing Key Points bullet list
+  - For each new point from this checkpoint window, check against existing bullets:
+    - Overlaps with an existing bullet → update that bullet in-place
+    - Genuinely new → append as a new bullet at the end of the list
+  - For each existing bullet, assess against the full session state:
+    - Still accurate → keep unchanged
+    - Outdated or contradicted → update in-place or remove
+  - Apply using Edit tool — targeted replacements per bullet, not full-section replacement
+
+  Skip Edit entirely if no triggers apply — PowerShell script will only update the timestamp.
 
   ## Step 6: Run PowerShell Script
 

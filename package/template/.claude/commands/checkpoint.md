@@ -74,34 +74,47 @@ Please execute the following:
         - Add note about when/why plan changed
       - Ensure todo.md and done.md are in sync with actual progress
 
-5. **If context changed, update context.md BEFORE running bash script:**
+5. **Update context.md using Edit tool BEFORE running bash script:**
 
    **CRITICAL**: This step must be completed BEFORE step 6 (bash script execution).
 
-   a. **Read current context.md** to see existing "Current Focus" and "Key Points" sections
+   a. **Read current context.md** to see the existing "Current Focus", "Session Focus", and "Key Points" sections.
 
-   b. **Determine if context.md needs updating** — trigger the Edit tool if EITHER condition is true:
-      - User validated a context change in step 3 (scope shift, new capability, etc.), OR
-      - The "Current Focus" section still contains the placeholder text `[To be filled during conversation]` — this means it's the first checkpoint and the file was never initialized. **Always populate it**, even if no explicit context change was detected.
+   b. **Determine what needs updating** — use Edit tool for any section where a trigger applies:
 
-   c. **When updating**, generate content from the validated checkpoint summary:
-      - Generate new "Current Focus" text based on validated checkpoint content
-      - Generate new "Key Points" bullet list reflecting:
-        - Work completed and artifacts created
-        - Key technical decisions made
-        - New capabilities or scope changes
-        - Reference to artifacts with file sizes if applicable
+      **Triggers:**
+      - "Current Focus" placeholder `[To be filled during conversation]` is still present → first checkpoint, always populate
+      - "Session Focus" placeholder `[To be filled on first checkpoint]` is still present → first checkpoint, always populate
+      - User validated a context/scope change in step 3
 
-   d. **Use Edit tool** to replace the outdated sections:
+   c. **Current Focus** — always replace entire paragraph:
+      - Generate one paragraph describing what is actively being worked on right now
+      - Use Edit tool to replace the entire "## Current Focus" paragraph
       - Use the ACTUAL resolved file path from `active-session.txt` (e.g., `chats/projects/my-project/2026-01-15-my-topic/context.md`)
       - **CRITICAL:** Do NOT pass `$CONTEXT_FILE` or any shell variable as the file path — the Edit tool does not evaluate shell syntax and will fail with "File does not exist"
-      - Replace entire "## Current Focus" paragraph with new validated content
-      - Replace entire "## Key Points" bullet list with new validated content
-      - Do NOT update timestamp yet (bash script handles this)
-      - Verify edit was successful before proceeding
 
-   e. **If neither condition in step 5b applies** (context already populated, no new changes):
-      - Skip Edit tool - bash script will only update timestamp
+   d. **Session Focus** — surgical merge:
+      - **First checkpoint** (placeholder `[To be filled on first checkpoint]` still present): write 1–2 sentences describing what this session is about at a high level — the overall goal or purpose
+      - **Subsequent checkpoints**: read the existing Session Focus text, then merge in changes surgically:
+        - Merge new session-level context (new scope additions, evolved goals)
+        - Update stale parts that no longer accurately describe the session
+        - Remove parts that have become irrelevant
+        - Only do a full replacement if the session's entire direction has fundamentally shifted
+      - Apply using Edit tool with targeted in-place edits (not full-section replacement, except on first population or full direction change)
+
+   e. **Key Points** — surgical merge:
+      - Read the existing Key Points bullet list
+      - For each **new point** from this checkpoint window, check against existing bullets:
+        - Overlaps with an existing bullet → update that bullet in-place
+        - Genuinely new → append as a new bullet at the end of the list
+      - For each **existing bullet**, assess against the full session state:
+        - Still accurate → keep unchanged
+        - Outdated or contradicted → update in-place or remove
+      - Apply using Edit tool — targeted replacements per bullet, not full-section replacement
+
+   f. **If no triggers apply** (all sections populated, no context changes, no new key points):
+      - Skip Edit tool — bash script will only update the timestamp
+      - Do NOT update timestamp yet (bash script handles this)
 
 6. **Update session files with validated content using bash:**
 
