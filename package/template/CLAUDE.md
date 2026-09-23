@@ -167,8 +167,8 @@ Always update `.cli-ai-chat/sessions.json` when:
 - Timestamps in files: ISO-8601 format (`2025-01-20T14:30:00Z`)
 - Planning files: `YYYY-MM-DD-name-{plan,todo,done}.md`
 
-### Artifact Naming
-- Artifact files use snake_case: `descriptive_name.md` (e.g. `analysis_report.md`, `findings_summary.md`)
+### File Naming
+- Files in `artifacts/`, `core-files/`, `core-instructions/`, and `uploaded-files/` use snake_case: `descriptive_name.md` (e.g. `analysis_report.md`, `findings_summary.md`)
 
 ## Critical Rules
 - Never create planning files automatically (only via `/start-plan`)
